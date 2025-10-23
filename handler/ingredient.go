@@ -3,60 +3,106 @@ package handler
 import (
 	"adong-be/models"
 	"adong-be/store"
+	"adong-be/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Ingredient handlers
+// GetIngredients with pagination and search - Returns ResourceCollection format
 func GetIngredients(c *gin.Context) {
-	var ingredients []models.Ingredient
-	if err := store.DB.GormClient.Find(&ingredients).Error; err != nil {
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.Ingredient{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"tennguyenlieu", "nguyenlieuid", "phanloai"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, ingredients)
+
+	var items []models.Ingredient
+	db := store.DB.GormClient.Model(&models.Ingredient{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"nguyenlieuid":  "nguyenlieuid",
+		"tennguyenlieu": "tennguyenlieu",
+		"phanloai":      "phanloai",
+		"donvitinh":     "donvitinh",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	if err := db.Find(&items).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: items,
+		Meta: meta,
+	})
 }
 
 func GetIngredient(c *gin.Context) {
 	id := c.Param("id")
-	var ingredient models.Ingredient
-	if err := store.DB.GormClient.First(&ingredient, "nguyenlieuid = ?", id).Error; err != nil {
+	var item models.Ingredient
+	if err := store.DB.GormClient.First(&item, "nguyenlieuid = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found"})
 		return
 	}
-	c.JSON(http.StatusOK, ingredient)
+	c.JSON(http.StatusOK, item)
 }
 
 func CreateIngredient(c *gin.Context) {
-	var ingredient models.Ingredient
-	if err := c.ShouldBindJSON(&ingredient); err != nil {
+	var item models.Ingredient
+	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := store.DB.GormClient.Create(&ingredient).Error; err != nil {
+	if err := store.DB.GormClient.Create(&item).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, ingredient)
+	c.JSON(http.StatusCreated, item)
 }
 
 func UpdateIngredient(c *gin.Context) {
 	id := c.Param("id")
-	var ingredient models.Ingredient
-	if err := store.DB.GormClient.First(&ingredient, "nguyenlieuid = ?", id).Error; err != nil {
+	var item models.Ingredient
+	if err := store.DB.GormClient.First(&item, "nguyenlieuid = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found"})
 		return
 	}
-	if err := c.ShouldBindJSON(&ingredient); err != nil {
+	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := store.DB.GormClient.Save(&ingredient).Error; err != nil {
+	if err := store.DB.GormClient.Save(&item).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, ingredient)
+	c.JSON(http.StatusOK, item)
 }
 
 func DeleteIngredient(c *gin.Context) {

@@ -3,19 +3,65 @@ package handler
 import (
 	"adong-be/models"
 	"adong-be/store"
+	"adong-be/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Dish handlers
+// GetDishes with pagination and search
 func GetDishes(c *gin.Context) {
-	var dishes []models.Dish
-	if err := store.DB.GormClient.Find(&dishes).Error; err != nil {
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.Dish{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"tenmonan", "monanid", "mota"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, dishes)
+
+	var dishes []models.Dish
+	db := store.DB.GormClient.Model(&models.Dish{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"monanid":   "monanid",
+		"tenmonan":  "tenmonan",
+		"loaimonan": "loaimonan",
+		"dongia":    "dongia",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	if err := db.Find(&dishes).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dishes,
+		Meta: meta,
+	})
 }
 
 func GetDish(c *gin.Context) {
