@@ -123,6 +123,8 @@ func SetupRouter() *gin.Engine {
 
 		// Supplier price list
 		api.GET("/supplier-prices", handler.GetSupplierPrices)
+		api.GET("/supplier-prices/ingredient/:ingredientId", handler.GetSupplierPricesByIngredient) 
+		api.GET("/supplier-prices/supplier/:supplierId", handler.GetSupplierPricesBySupplier)        
 		api.GET("/supplier-prices/:id", handler.GetSupplierPrice)
 		api.POST("/supplier-prices", handler.CreateSupplierPrice)
 		api.PUT("/supplier-prices/:id", handler.UpdateSupplierPrice)

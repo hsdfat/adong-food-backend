@@ -16,7 +16,6 @@ func GetIngredients(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	params = models.GetPaginationParams(
 		params.Page,
 		params.PageSize,
@@ -29,7 +28,7 @@ func GetIngredients(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.Ingredient{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"tennguyenlieu", "nguyenlieuid", "phanloai"},
+		Fields: []string{"tennguyenlieu", "nguyenlieuid"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -46,7 +45,6 @@ func GetIngredients(c *gin.Context) {
 	allowedSortFields := map[string]string{
 		"nguyenlieuid":  "nguyenlieuid",
 		"tennguyenlieu": "tennguyenlieu",
-		"phanloai":      "phanloai",
 		"donvitinh":     "donvitinh",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)

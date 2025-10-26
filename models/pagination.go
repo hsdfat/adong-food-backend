@@ -2,8 +2,8 @@ package models
 
 // PaginationParams contains pagination parameters from query string
 type PaginationParams struct {
-	Page     int    `form:"page" binding:"omitempty,min=1"`
-	PageSize int    `form:"per_page" binding:"omitempty,min=1,max=100"` // Changed to per_page to match common conventions
+	Page     int    `form:"page" binding:"omitempty,min=0"`
+	PageSize int    `form:"per_page" binding:"omitempty,min=0,max=100"` // Changed to per_page to match common conventions
 	Search   string `form:"search"`
 	SortBy   string `form:"sort_by"`
 	SortDir  string `form:"sort_dir" binding:"omitempty,oneof=asc desc"`
@@ -28,15 +28,15 @@ type ResourceCollection struct {
 // GetPaginationParams extracts and validates pagination parameters with defaults
 func GetPaginationParams(page, pageSize int, search, sortBy, sortDir string) PaginationParams {
 	// Set defaults
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
+	// if page < 1 {
+	// 	page = 1
+	// }
+	// if pageSize < 1 {
+	// 	pageSize = 10
+	// }
+	// if pageSize > 100 {
+	// 	pageSize = 100
+	// }
 	if sortDir == "" {
 		sortDir = "asc"
 	}
@@ -52,6 +52,16 @@ func GetPaginationParams(page, pageSize int, search, sortBy, sortDir string) Pag
 
 // CalculatePaginationMeta calculates pagination metadata
 func CalculatePaginationMeta(page, perPage int, total int64) *PaginationMeta {
+	if perPage < 1 || page < 1 {
+		return &PaginationMeta{
+			CurrentPage: page,
+			LastPage:    1,
+			From:        0,
+			To:          int(total),
+			PerPage:     perPage,
+			Total:       int(total),
+		}
+	}
 	totalInt := int(total)
 	lastPage := (totalInt + perPage - 1) / perPage
 	if lastPage < 1 {

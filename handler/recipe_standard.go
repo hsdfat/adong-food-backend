@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetRecipeStandards with pagination and search - Returns ResourceCollection format
+// GetRecipeStandards with pagination and search - Returns ResourceCollection format with DTOs
 func GetRecipeStandards(c *gin.Context) {
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
@@ -45,21 +45,27 @@ func GetRecipeStandards(c *gin.Context) {
 
 	allowedSortFields := map[string]string{
 		"dinhmucid":    "dinhmucid",
-		"monanid":      "monanid",
+		"monanid":      "moananid",
 		"nguyenlieuid": "nguyenlieuid",
-		"dinhmuc":      "dinhmuc",
+		"dinhmuc":      "dinhmuc1suat",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Dish").Preload("Ingredient").Preload("UpdatedBy")
 
 	if err := db.Find(&recipes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Convert to DTOs
+	dtos := models.ConvertRecipeStandardsToDTO(recipes)
+
 	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
 	c.JSON(http.StatusOK, models.ResourceCollection{
-		Data: recipes,
+		Data: dtos,
 		Meta: meta,
 	})
 }
@@ -67,11 +73,20 @@ func GetRecipeStandards(c *gin.Context) {
 func GetRecipeStandard(c *gin.Context) {
 	id := c.Param("id")
 	var recipe models.RecipeStandard
-	if err := store.DB.GormClient.First(&recipe, "dinhmucid = ?", id).Error; err != nil {
+	
+	// Preload related entities
+	if err := store.DB.GormClient.
+		Preload("Dish").
+		Preload("Ingredient").
+		Preload("UpdatedBy").
+		First(&recipe, "dinhmucid = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe standard not found"})
 		return
 	}
-	c.JSON(http.StatusOK, recipe)
+	
+	// Convert to DTO and return
+	dto := recipe.ToDTO()
+	c.JSON(http.StatusOK, dto)
 }
 
 func CreateRecipeStandard(c *gin.Context) {
@@ -84,7 +99,17 @@ func CreateRecipeStandard(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, recipe)
+	
+	// Reload with relationships
+	store.DB.GormClient.
+		Preload("Dish").
+		Preload("Ingredient").
+		Preload("UpdatedBy").
+		First(&recipe, "dinhmucid = ?", recipe.StandardID)
+	
+	// Return DTO
+	dto := recipe.ToDTO()
+	c.JSON(http.StatusCreated, dto)
 }
 
 func UpdateRecipeStandard(c *gin.Context) {
@@ -102,7 +127,17 @@ func UpdateRecipeStandard(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, recipe)
+	
+	// Reload with relationships
+	store.DB.GormClient.
+		Preload("Dish").
+		Preload("Ingredient").
+		Preload("UpdatedBy").
+		First(&recipe, "dinhmucid = ?", recipe.StandardID)
+	
+	// Return DTO
+	dto := recipe.ToDTO()
+	c.JSON(http.StatusOK, dto)
 }
 
 func DeleteRecipeStandard(c *gin.Context) {
@@ -114,7 +149,7 @@ func DeleteRecipeStandard(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Recipe standard deleted successfully"})
 }
 
-// GetRecipeStandardsByDish with pagination and search - Returns ResourceCollection format
+// GetRecipeStandardsByDish with pagination and search - Returns ResourceCollection format with DTOs
 func GetRecipeStandardsByDish(c *gin.Context) {
 	dishId := c.Param("dishId")
 
@@ -152,19 +187,25 @@ func GetRecipeStandardsByDish(c *gin.Context) {
 
 	allowedSortFields := map[string]string{
 		"nguyenlieuid": "nguyenlieuid",
-		"dinhmuc":      "dinhmuc",
+		"dinhmuc":      "dinhmuc1suat",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Dish").Preload("Ingredient").Preload("UpdatedBy")
 
 	if err := db.Find(&recipes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Convert to DTOs
+	dtos := models.ConvertRecipeStandardsToDTO(recipes)
+
 	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
 	c.JSON(http.StatusOK, models.ResourceCollection{
-		Data: recipes,
+		Data: dtos,
 		Meta: meta,
 	})
 }

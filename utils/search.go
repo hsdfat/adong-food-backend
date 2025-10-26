@@ -63,6 +63,9 @@ func ApplySort(db *gorm.DB, sortBy, sortDir string, allowedFields map[string]str
 
 // ApplyPagination applies pagination to a GORM query
 func ApplyPagination(db *gorm.DB, page, pageSize int) *gorm.DB {
+	if page < 1 || pageSize < 1 {
+		return db
+	}
 	offset := (page - 1) * pageSize
 	return db.Offset(offset).Limit(pageSize)
 }
