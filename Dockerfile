@@ -1,39 +1,32 @@
-# Multi-stage build for Go backend
-FROM golang:1.21-alpine AS builder
+# ============================================
+# Stage 1: Build Stage
+# ============================================
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache git gcc musl-dev
+RUN --mount=type=bind,target=/app \
+    go build -o /tmp/main cmd/main.go
+
+# ============================================
+# Stage 2: Runtime Stage
+# ============================================
+FROM alpine:latest
+
+# Set timezone
+ENV TZ=Asia/Ho_Chi_Minh
+
+# Create app user for security (non-root)
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
 
 # Set working directory
 WORKDIR /app
 
-# Copy go mod files
-COPY go.mod go.sum ./
+# Copy binary from builder stage
+COPY --from=builder --chown=appuser:appuser /tmp/main .
 
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY . .
-
-# Build the application
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/main.go
-
-# Final stage
-FROM alpine:latest
-
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata wget
-
-# Create app user
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
-
-WORKDIR /app
-
-# Copy binary from builder
-COPY --from=builder /app/main .
-COPY --from=builder /app/.env .env
+# Copy .env file if exists (optional - can use env vars instead)
+COPY --from=builder --chown=appuser:appuser /app/.env* ./
 
 # Set ownership
 RUN chown -R appuser:appuser /app
@@ -41,12 +34,15 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Expose port
+# Expose application port
 EXPOSE 18080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:18080/health || exit 1
+HEALTHCHECK --interval=30s \
+    --timeout=10s \
+    --start-period=5s \
+    --retries=3 \
+    CMD curl -f http://localhost:18080/health || exit 1
 
 # Run the application
 CMD ["./main"]
