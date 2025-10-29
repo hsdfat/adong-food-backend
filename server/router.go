@@ -130,6 +130,19 @@ func SetupRouter() *gin.Engine {
 		api.PUT("/supplier-prices/:id", handler.UpdateSupplierPrice)
 		api.DELETE("/supplier-prices/:id", handler.DeleteSupplierPrice)
 
+
+
+		// Menu Card routes
+		menuCardRoutes := api.Group("/menu-cards")
+		{
+			menuCardRoutes.GET("", handler.GetMenuCards)
+			menuCardRoutes.GET("/:id", handler.GetMenuCard)
+			menuCardRoutes.POST("", handler.CreateMenuCard)
+			menuCardRoutes.PUT("/:id", handler.UpdateMenuCard)
+			menuCardRoutes.DELETE("/:id", handler.DeleteMenuCard)
+			menuCardRoutes.POST("/:id/approve", handler.ApproveMenuCard)
+		}
+
 		// Order forms
 		// api.GET("/orders", handler.GetOrders)
 		// api.GET("/orders/:id", handler.GetOrder)
