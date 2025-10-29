@@ -1,21 +1,29 @@
 package handler
 
 import (
+	"adong-be/logger"
 	"adong-be/models"
 	"adong-be/store"
 	"adong-be/utils"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-// GetSupplierPrices with pagination and search - Returns ResourceCollection format with DTOs
 func GetSupplierPrices(c *gin.Context) {
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Get date range parameters
+	effectiveFrom := c.Query("effective_from")
+	effectiveTo := c.Query("effective_to")
+	logger.Log.Debug("receive query","Effective From:", effectiveFrom, "Effective To:", effectiveTo)
 
 	params = models.GetPaginationParams(
 		params.Page,
@@ -33,7 +41,11 @@ func GetSupplierPrices(c *gin.Context) {
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
-
+	
+	// Apply date range filters for counting
+	countDB = applyDateRangeFilter(countDB, effectiveFrom, effectiveTo)
+	
+	fmt.Println(params.Search)
 	if err := countDB.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -43,6 +55,9 @@ func GetSupplierPrices(c *gin.Context) {
 	db := store.DB.GormClient.Model(&models.SupplierPrice{})
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
+	// Apply date range filters for data query
+	db = applyDateRangeFilter(db, effectiveFrom, effectiveTo)
+
 	allowedSortFields := map[string]string{
 		"sanphamid":    "sanphamid",
 		"tensanpham":   "tensanpham",
@@ -50,6 +65,7 @@ func GetSupplierPrices(c *gin.Context) {
 		"nhacungcapid": "nhacungcapid",
 		"dongia":       "dongia",
 		"hieuluctu":    "hieuluctu",
+		"hieulucden":   "hieulucden",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -70,6 +86,60 @@ func GetSupplierPrices(c *gin.Context) {
 		Data: dtos,
 		Meta: meta,
 	})
+}
+
+// Helper function to apply date range filters
+func applyDateRangeFilter(db *gorm.DB, effectiveFrom, effectiveTo string) *gorm.DB {
+	// // Parse and validate effectiveFrom date
+	// if effectiveFrom != "" {
+	// 	// Parse the date string (format: YYYY-MM-DD)
+	// 	fromDate, err := time.Parse("2006-01-02", effectiveFrom)
+	// 	if err == nil {
+	// 		// Filter records where hieuluctu >= effectiveFrom OR hieulucden >= effectiveFrom
+	// 		// This ensures we get prices that are effective during or after the from date
+	// 		db = db.Where("hieuluctu >= ?", fromDate)
+	// 	}
+	// }
+
+	// // Parse and validate effectiveTo date
+	// if effectiveTo != "" {
+	// 	// Parse the date string (format: YYYY-MM-DD)
+	// 	toDate, err := time.Parse("2006-01-02", effectiveTo)
+	// 	if err == nil {
+	// 		// Add 1 day to include the entire end date
+	// 		toDateEnd := toDate.Add(24 * time.Hour)
+	// 		// Filter records where hieuluctu <= effectiveTo
+	// 		// This ensures we get prices that start before or on the to date
+	// 		db = db.Where("hieulucden < ?", toDateEnd)
+	// 	}
+	// }
+
+	if effectiveFrom == "" {
+		effectiveFrom = "0001-01-01"
+	}
+	if effectiveTo == "" {
+		effectiveTo = "9999-12-31"
+	}
+
+	// If both dates are provided, find prices that overlap with the date range
+	if effectiveFrom != "" && effectiveTo != "" {
+		fromDate, errFrom := time.Parse("2006-01-02", effectiveFrom)
+		toDate, errTo := time.Parse("2006-01-02", effectiveTo)
+		
+		if errFrom == nil && errTo == nil {
+			// toDateEnd := toDate.Add(24 * time.Hour)
+			// Records where:
+			// - Start date is within range, OR
+			// - End date is within range, OR
+			// - The price period encompasses the entire search range
+			db = db.Where(
+				"hieuluctu >= ? AND hieulucden <= ?",
+				fromDate, toDate,
+			)
+		}
+	}
+
+	return db
 }
 
 func GetSupplierPrice(c *gin.Context) {
