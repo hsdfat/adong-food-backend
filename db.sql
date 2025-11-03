@@ -1,182 +1,264 @@
-CREATE TABLE public.master_suppliers (
-    supplier_id character varying(50) NOT NULL,
-    supplier_name character varying(255) NOT NULL,
-    zalo_link text,
-    address text,
-    phone character varying(20),
-    email character varying(255),
-    active boolean DEFAULT true,
-    created_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    modified_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+-- =========================================================
+-- SCHEMA: CENTRAL KITCHEN MANAGEMENT
+-- =========================================================
+
+-- ========================
+-- MASTER TABLES
+-- ========================
+
+CREATE TABLE IF NOT EXISTS public.master_suppliers (
+    supplier_id VARCHAR(50) PRIMARY KEY,
+    supplier_name VARCHAR(255) NOT NULL,
+    zalo_link TEXT,
+    address TEXT,
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-ALTER TABLE public.master_suppliers OWNER TO adong;
-
---
--- Table: master_users
---
-CREATE TABLE public.master_users (
-    user_id character varying(50) NOT NULL,
-    user_name character varying(50) NOT NULL,
-    password character varying(255) NOT NULL,
-    full_name character varying(255) NOT NULL,
-    role character varying(50),
-    kitchen_id character varying(50),
-    email character varying(255),
-    phone character varying(20),
-    active boolean DEFAULT true,
-    created_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    modified_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS public.master_kitchens (
+    kitchen_id VARCHAR(50) PRIMARY KEY,
+    kitchen_name VARCHAR(255) NOT NULL,
+    address TEXT,
+    phone VARCHAR(20),
+    active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-ALTER TABLE public.master_users OWNER TO adong;
---
--- Table: master_ingredients
---
-CREATE TABLE public.master_ingredients (
-    ingredient_id character varying(50) NOT NULL,
-    ingredient_name character varying(255) NOT NULL,
-    properties character varying(100),
-    material_group character varying(100),
-    unit character varying(50),
-    created_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    modified_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS public.master_users (
+    user_id VARCHAR(50) PRIMARY KEY,
+    user_name VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    role VARCHAR(50),
+    kitchen_id VARCHAR(50),
+    email VARCHAR(255),
+    phone VARCHAR(20),
+    active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_users_kitchen FOREIGN KEY (kitchen_id)
+        REFERENCES public.master_kitchens(kitchen_id)
 );
 
-ALTER TABLE public.master_ingredients OWNER TO adong;
--- Table: master_kitchens
---
-CREATE TABLE public.master_kitchens (
-    kitchen_id character varying(50) NOT NULL,
-    kitchen_name character varying(255) NOT NULL,
-    address text,
-    phone character varying(20),
-    active boolean DEFAULT true,
-    created_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    modified_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS public.master_dishes (
+    dish_id VARCHAR(50) PRIMARY KEY,
+    dish_name VARCHAR(255) NOT NULL UNIQUE,
+    cooking_method VARCHAR(100),
+    category VARCHAR(100),
+    description TEXT,
+    active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-ALTER TABLE public.master_kitchens OWNER TO adong;
-
--- Table: supplementary_items
---
-
---
--- Table: supplier_price_list
---
-CREATE TABLE public.supplier_price_list (
-    product_id integer NOT NULL,
-    product_name character varying(255),
-    ingredient_id character varying(50),
-    classification character varying(100),
-    supplier_id character varying(50),
-    manufacturer_name character varying(255),
-    unit character varying(50),
-    specification character varying(100),
-    unit_price numeric(15,2),
-    price_per_item numeric(15,2),
-    effective_from timestamp without time zone,
-    effective_to timestamp without time zone,
-    active boolean DEFAULT true,
-    new_buying_price numeric(15,2),
-    promotion "char"
+CREATE TABLE IF NOT EXISTS public.master_ingredients (
+    ingredient_id VARCHAR(50) PRIMARY KEY,
+    ingredient_name VARCHAR(255) NOT NULL UNIQUE,
+    properties VARCHAR(100),
+    material_group VARCHAR(100),
+    unit VARCHAR(50) NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-ALTER TABLE public.supplier_price_list OWNER TO adong;
+-- ========================
+-- SUPPLIER PRICE LIST
+-- ========================
 
-CREATE SEQUENCE public.supplier_price_list_product_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
+CREATE SEQUENCE IF NOT EXISTS public.supplier_price_list_product_id_seq
+    START 1 INCREMENT 1 OWNED BY public.supplier_price_list.product_id;
 
-ALTER SEQUENCE public.supplier_price_list_product_id_seq OWNER TO adong;
-ALTER SEQUENCE public.supplier_price_list_product_id_seq OWNED BY public.supplier_price_list.product_id;
+CREATE TABLE IF NOT EXISTS public.supplier_price_list (
+    product_id INTEGER PRIMARY KEY DEFAULT nextval('public.supplier_price_list_product_id_seq'),
+    product_name VARCHAR(255),
+    ingredient_id VARCHAR(50) NOT NULL,
+    classification VARCHAR(100),
+    supplier_id VARCHAR(50) NOT NULL,
+    manufacturer_name VARCHAR(255),
+    unit VARCHAR(50),
+    specification VARCHAR(100),
+    unit_price NUMERIC(15,2) NOT NULL CHECK (unit_price >= 0),
+    price_per_item NUMERIC(15,2),
+    effective_from TIMESTAMP,
+    effective_to TIMESTAMP,
+    active BOOLEAN DEFAULT TRUE NOT NULL,
+    new_buying_price NUMERIC(15,2),
+    promotion CHAR(1),
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
---
--- Table: dish_recipe_standards
---
-CREATE TABLE public.dish_recipe_standards (
-    recipe_id integer NOT NULL,
-    dish_id character varying(50),
-    ingredient_id character varying(50),
-    unit character varying(50),
-    quantity_per_serving numeric(10,4),
-    notes text,
-    cost numeric(15,2),
-    updated_by_user_id character varying(50),
-    created_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    modified_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    CONSTRAINT fk_price_ingredient FOREIGN KEY (ingredient_id)
+        REFERENCES public.master_ingredients(ingredient_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_price_supplier FOREIGN KEY (supplier_id)
+        REFERENCES public.master_suppliers(supplier_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
-ALTER TABLE public.dish_recipe_standards OWNER TO adong;
+CREATE INDEX IF NOT EXISTS idx_supplier_price_ingredient ON public.supplier_price_list (ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_price_supplier ON public.supplier_price_list (supplier_id);
 
-CREATE SEQUENCE public.dish_recipe_standards_recipe_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
+-- ========================
+-- DISH RECIPE STANDARDS
+-- ========================
 
-ALTER SEQUENCE public.dish_recipe_standards_recipe_id_seq OWNER TO adong;
-ALTER SEQUENCE public.dish_recipe_standards_recipe_id_seq OWNED BY public.dish_recipe_standards.recipe_id;
+CREATE SEQUENCE IF NOT EXISTS public.dish_recipe_standards_recipe_id_seq
+    START 1 INCREMENT 1 OWNED BY public.dish_recipe_standards.recipe_id;
 
---
--- Constraints
---
-ALTER TABLE ONLY public.supplier_price_list
-    ADD CONSTRAINT supplier_price_list_pkey PRIMARY KEY (product_id);
+CREATE TABLE IF NOT EXISTS public.dish_recipe_standards (
+    recipe_id INTEGER PRIMARY KEY DEFAULT nextval('public.dish_recipe_standards_recipe_id_seq'),
+    dish_id VARCHAR(50) NOT NULL,
+    ingredient_id VARCHAR(50) NOT NULL,
+    unit VARCHAR(50) NOT NULL,
+    quantity_per_serving NUMERIC(10,4) NOT NULL CHECK (quantity_per_serving > 0),
+    notes TEXT,
+    cost NUMERIC(15,2),
+    updated_by_user_id VARCHAR(50),
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-ALTER TABLE ONLY public.master_kitchens
-    ADD CONSTRAINT master_kitchens_pkey PRIMARY KEY (kitchen_id);
+    CONSTRAINT fk_recipe_dish FOREIGN KEY (dish_id)
+        REFERENCES public.master_dishes(dish_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_recipe_ingredient FOREIGN KEY (ingredient_id)
+        REFERENCES public.master_ingredients(ingredient_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_recipe_user FOREIGN KEY (updated_by_user_id)
+        REFERENCES public.master_users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL
+);
 
-ALTER TABLE ONLY public.master_dishes
-    ADD CONSTRAINT master_dishes_pkey PRIMARY KEY (dish_id);
+CREATE INDEX IF NOT EXISTS idx_recipe_dish ON public.dish_recipe_standards (dish_id);
+CREATE INDEX IF NOT EXISTS idx_recipe_ingredient ON public.dish_recipe_standards (ingredient_id);
 
-ALTER TABLE ONLY public.master_suppliers
-    ADD CONSTRAINT master_suppliers_pkey PRIMARY KEY (supplier_id);
+-- ========================
+-- ORDERS AND DETAILS
+-- ========================
 
-ALTER TABLE ONLY public.master_users
-    ADD CONSTRAINT master_users_pkey PRIMARY KEY (user_id);
+CREATE TABLE IF NOT EXISTS public.orders (
+    order_id SERIAL PRIMARY KEY,
+    kitchen_id VARCHAR(50) NOT NULL,
+    order_date DATE NOT NULL,
+    note TEXT,
+    status VARCHAR(50) DEFAULT 'Pending' NOT NULL,
+    created_by_user_id VARCHAR(50),
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-ALTER TABLE ONLY public.master_ingredients
-    ADD CONSTRAINT master_ingredients_pkey PRIMARY KEY (ingredient_id);
+    CONSTRAINT fk_order_kitchen FOREIGN KEY (kitchen_id)
+        REFERENCES public.master_kitchens(kitchen_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_order_user FOREIGN KEY (created_by_user_id)
+        REFERENCES public.master_users(user_id)
+        ON UPDATE CASCADE ON DELETE SET NULL
+);
 
-ALTER TABLE ONLY public.dish_recipe_standards
-    ADD CONSTRAINT dish_recipe_standards_pkey PRIMARY KEY (recipe_id);
---
--- Indexes
---
-CREATE INDEX idx_supplier_price_list_supplier ON public.supplier_price_list USING btree (supplier_id);
-CREATE INDEX idx_supplier_price_list_ingredient ON public.supplier_price_list USING btree (ingredient_id);
-CREATE INDEX idx_dish_standards_dish ON public.dish_recipe_standards USING btree (dish_id);
-CREATE INDEX idx_dish_standards_ingredient ON public.dish_recipe_standards USING btree (ingredient_id);
+CREATE TABLE IF NOT EXISTS public.order_details (
+    order_detail_id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    dish_id VARCHAR(50) NOT NULL,
+    portions INTEGER NOT NULL CHECK (portions > 0),
+    note TEXT,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-CREATE TRIGGER update_order_forms_updated_at BEFORE UPDATE ON public.order_forms FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+    CONSTRAINT fk_detail_order FOREIGN KEY (order_id)
+        REFERENCES public.orders(order_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_detail_dish FOREIGN KEY (dish_id)
+        REFERENCES public.master_dishes(dish_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
---
--- Foreign Keys
---
-ALTER TABLE ONLY public.supplier_price_list
-    ADD CONSTRAINT supplier_price_list_ingredient_fkey FOREIGN KEY (ingredient_id) REFERENCES public.master_ingredients(ingredient_id);
+CREATE TABLE IF NOT EXISTS public.order_ingredients (
+    order_ingredient_id SERIAL PRIMARY KEY,
+    order_detail_id INTEGER NOT NULL,
+    ingredient_id VARCHAR(50) NOT NULL,
+    quantity NUMERIC(15,4) NOT NULL CHECK (quantity > 0),
+    unit VARCHAR(50) NOT NULL,
+    standard_per_portion NUMERIC(10,4),
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-ALTER TABLE ONLY public.supplier_price_list
-    ADD CONSTRAINT supplier_price_list_supplier_fkey FOREIGN KEY (supplier_id) REFERENCES public.master_suppliers(supplier_id);
+    CONSTRAINT fk_order_ing_detail FOREIGN KEY (order_detail_id)
+        REFERENCES public.order_details(order_detail_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_order_ing_ingredient FOREIGN KEY (ingredient_id)
+        REFERENCES public.master_ingredients(ingredient_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
-ALTER TABLE ONLY public.dish_recipe_standards
-    ADD CONSTRAINT recipe_standards_dish_fkey FOREIGN KEY (dish_id) REFERENCES public.master_dishes(dish_id);
+CREATE TABLE IF NOT EXISTS public.order_supplementary_foods (
+    supplementary_id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    ingredient_id VARCHAR(50) NOT NULL,
+    quantity NUMERIC(15,4) NOT NULL CHECK (quantity > 0),
+    unit VARCHAR(50) NOT NULL,
+    standard_per_portion NUMERIC(10,4),
+    portions INTEGER,
+    note TEXT,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-ALTER TABLE ONLY public.dish_recipe_standards
-    ADD CONSTRAINT recipe_standards_updated_by_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.master_users(user_id);
+    CONSTRAINT fk_supp_order FOREIGN KEY (order_id)
+        REFERENCES public.orders(order_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_supp_ingredient FOREIGN KEY (ingredient_id)
+        REFERENCES public.master_ingredients(ingredient_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
-ALTER TABLE ONLY public.dish_recipe_standards
-    ADD CONSTRAINT recipe_standards_ingredient_fkey FOREIGN KEY (ingredient_id) REFERENCES public.master_ingredients(ingredient_id);
+-- ========================
+-- SUPPLIER REQUESTS
+-- ========================
 
-ALTER TABLE ONLY public.master_users
-    ADD CONSTRAINT users_kitchen_fkey FOREIGN KEY (kitchen_id) REFERENCES public.master_kitchens(kitchen_id);
+CREATE TABLE IF NOT EXISTS public.supplier_requests (
+    request_id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    supplier_id VARCHAR(50) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Pending' NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
+    CONSTRAINT fk_req_order FOREIGN KEY (order_id)
+        REFERENCES public.orders(order_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_req_supplier FOREIGN KEY (supplier_id)
+        REFERENCES public.master_suppliers(supplier_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
--- Completed on 2025-11-02 14:25:51 UTC
+CREATE TABLE IF NOT EXISTS public.supplier_request_details (
+    request_detail_id SERIAL PRIMARY KEY,
+    request_id INTEGER NOT NULL,
+    ingredient_id VARCHAR(50) NOT NULL,
+    quantity NUMERIC(15,4) NOT NULL CHECK (quantity > 0),
+    unit VARCHAR(50) NOT NULL,
+    unit_price NUMERIC(15,2) NOT NULL CHECK (unit_price >= 0),
+    total_price NUMERIC(15,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+    CONSTRAINT fk_req_detail_request FOREIGN KEY (request_id)
+        REFERENCES public.supplier_requests(request_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_req_detail_ingredient FOREIGN KEY (ingredient_id)
+        REFERENCES public.master_ingredients(ingredient_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+-- ========================
+-- OPTIONAL PERFORMANCE INDEXES
+-- ========================
+
+CREATE INDEX IF NOT EXISTS idx_orders_kitchen ON public.orders (kitchen_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders (status);
+CREATE INDEX IF NOT EXISTS idx_order_details_order ON public.order_details (order_id);
+CREATE INDEX IF NOT EXISTS idx_order_ing_detail ON public.order_ingredients (order_detail_id);
+CREATE INDEX IF NOT EXISTS idx_supplementary_order ON public.order_supplementary_foods (order_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_requests_order ON public.supplier_requests (order_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_requests_supplier ON public.supplier_requests (supplier_id);
