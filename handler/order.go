@@ -163,6 +163,8 @@ func CreateOrder(c *gin.Context) {
 	// Create details and nested ingredients
 	for i := range order.Details {
 		order.Details[i].OrderID = order.OrderID
+		logger.Log.Info("Creating ingredient", "orderDetailID", order.Details[i].OrderDetailID)
+		order.Details[i].OrderDetailID = 0 // Ensure auto-increment
 		if err := tx.Create(&order.Details[i]).Error; err != nil {
 			logger.Log.Error("CreateOrder create detail error", "error", err)
 			tx.Rollback()
