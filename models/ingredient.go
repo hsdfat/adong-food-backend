@@ -4,15 +4,15 @@ import "time"
 
 // Ingredient - Master data for raw materials and ingredients (dm_nvl)
 type Ingredient struct {
-	IngredientID   string    `gorm:"primaryKey;column:nguyenlieuid" json:"ingredientId"`
-	IngredientName string    `gorm:"column:tennguyenlieu;not null" json:"ingredientName"`
-	Property       string    `gorm:"column:tinhchat" json:"property"`
-	MaterialGroup  string    `gorm:"column:nhomvthh" json:"materialGroup"`
-	Unit           string    `gorm:"column:donvitinh" json:"unit"`
-	CreatedDate    time.Time `gorm:"column:createddate;autoCreateTime" json:"createdDate"`
-	ModifiedDate   time.Time `gorm:"column:modifieddate;autoUpdateTime" json:"modifiedDate"`
+    IngredientID   string    `gorm:"primaryKey;column:ingredient_id" json:"ingredientId"`
+    IngredientName string    `gorm:"column:ingredient_name;not null" json:"ingredientName"`
+    Property       string    `gorm:"column:properties" json:"property"`
+    MaterialGroup  string    `gorm:"column:material_group" json:"materialGroup"`
+    Unit           string    `gorm:"column:unit" json:"unit"`
+    CreatedDate    time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+    ModifiedDate   time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 }
 
 func (Ingredient) TableName() string {
-	return "dm_nvl"
+    return "master_ingredients"
 }

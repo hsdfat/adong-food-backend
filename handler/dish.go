@@ -29,7 +29,7 @@ func GetDishes(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.Dish{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"tenmonan", "monanid", "mota"},
+		Fields: []string{"dish_name", "dish_id", "description"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -44,10 +44,11 @@ func GetDishes(c *gin.Context) {
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"monanid":   "monanid",
-		"tenmonan":  "tenmonan",
-		"loaimonan": "loaimonan",
-		"dongia":    "dongia",
+		"dish_id":        "dish_id",
+		"dish_name":      "dish_name",
+		"cooking_method": "cooking_method",
+		"category":       "category",
+		"created_date":   "created_date",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -67,7 +68,7 @@ func GetDishes(c *gin.Context) {
 func GetDish(c *gin.Context) {
 	id := c.Param("id")
 	var dish models.Dish
-	if err := store.DB.GormClient.First(&dish, "monanid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&dish, "dish_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Dish not found"})
 		return
 	}
@@ -90,7 +91,7 @@ func CreateDish(c *gin.Context) {
 func UpdateDish(c *gin.Context) {
 	id := c.Param("id")
 	var dish models.Dish
-	if err := store.DB.GormClient.First(&dish, "monanid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&dish, "dish_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Dish not found"})
 		return
 	}
@@ -107,7 +108,7 @@ func UpdateDish(c *gin.Context) {
 
 func DeleteDish(c *gin.Context) {
 	id := c.Param("id")
-	if err := store.DB.GormClient.Delete(&models.Dish{}, "monanid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.Delete(&models.Dish{}, "dish_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

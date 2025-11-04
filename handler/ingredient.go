@@ -28,7 +28,7 @@ func GetIngredients(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.Ingredient{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"tennguyenlieu", "nguyenlieuid"},
+		Fields: []string{"ingredient_name", "ingredient_id"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -43,9 +43,10 @@ func GetIngredients(c *gin.Context) {
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"nguyenlieuid":  "nguyenlieuid",
-		"tennguyenlieu": "tennguyenlieu",
-		"donvitinh":     "donvitinh",
+		"ingredient_id":   "ingredient_id",
+		"ingredient_name": "ingredient_name",
+		"unit":            "unit",
+		"created_date":    "created_date",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -65,7 +66,7 @@ func GetIngredients(c *gin.Context) {
 func GetIngredient(c *gin.Context) {
 	id := c.Param("id")
 	var item models.Ingredient
-	if err := store.DB.GormClient.First(&item, "nguyenlieuid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&item, "ingredient_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found"})
 		return
 	}
@@ -88,7 +89,7 @@ func CreateIngredient(c *gin.Context) {
 func UpdateIngredient(c *gin.Context) {
 	id := c.Param("id")
 	var item models.Ingredient
-	if err := store.DB.GormClient.First(&item, "nguyenlieuid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&item, "ingredient_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found"})
 		return
 	}
@@ -105,7 +106,7 @@ func UpdateIngredient(c *gin.Context) {
 
 func DeleteIngredient(c *gin.Context) {
 	id := c.Param("id")
-	if err := store.DB.GormClient.Delete(&models.Ingredient{}, "nguyenlieuid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.Delete(&models.Ingredient{}, "ingredient_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

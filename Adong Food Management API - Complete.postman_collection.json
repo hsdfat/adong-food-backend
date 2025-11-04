@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "021962f7-7a19-4c87-95d0-45477286566e",
+		"_postman_id": "b28000d7-d012-4941-86b5-269a2f7eb5a8",
 		"name": "Adong Food Management API - Complete",
 		"description": "Complete API collection for Adong Food Management System with authentication, pagination, search, and sorting capabilities",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
@@ -19,35 +19,12 @@
 								"exec": [
 									"if (pm.response.code === 200) {",
 									"    var jsonData = pm.response.json();",
-									"    ",
-									"    // Save access token",
 									"    if (jsonData.token) {",
 									"        pm.collectionVariables.set('access_token', jsonData.token);",
-									"        console.log('Access token saved:', jsonData.token);",
 									"    }",
-									"    ",
-									"    // Save refresh token",
 									"    if (jsonData.refresh_token) {",
 									"        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
-									"        console.log('Refresh token saved');",
 									"    }",
-									"    ",
-									"    // Save expire time if available",
-									"    if (jsonData.expire) {",
-									"        pm.collectionVariables.set('token_expire', jsonData.expire);",
-									"    }",
-									"    ",
-									"    pm.test('Login successful', function () {",
-									"        pm.response.to.have.status(200);",
-									"    });",
-									"    ",
-									"    pm.test('Token received', function () {",
-									"        pm.expect(jsonData.token).to.be.a('string');",
-									"    });",
-									"} else {",
-									"    pm.test('Login failed', function () {",
-									"        pm.response.to.have.status(401);",
-									"    });",
 									"}"
 								],
 								"type": "text/javascript"
@@ -84,34 +61,6 @@
 				},
 				{
 					"name": "Refresh Token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    var jsonData = pm.response.json();",
-									"    ",
-									"    // Update access token",
-									"    if (jsonData.token) {",
-									"        pm.collectionVariables.set('access_token', jsonData.token);",
-									"        console.log('Access token refreshed');",
-									"    }",
-									"    ",
-									"    // Update expire time if available",
-									"    if (jsonData.expire) {",
-									"        pm.collectionVariables.set('token_expire', jsonData.expire);",
-									"    }",
-									"    ",
-									"    pm.test('Token refresh successful', function () {",
-									"        pm.response.to.have.status(200);",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
 						"auth": {
 							"type": "noauth"
@@ -121,12 +70,12 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{refresh_token}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
-						},
 						"url": {
 							"raw": "{{base_url}}/auth/refresh",
 							"host": [
@@ -142,26 +91,17 @@
 				},
 				{
 					"name": "Logout",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    // Clear tokens on successful logout",
-									"    pm.collectionVariables.set('access_token', '');",
-									"    console.log('Tokens cleared after logout');",
-									"    ",
-									"    pm.test('Logout successful', function () {",
-									"        pm.response.to.have.status(200);",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [],
 						"url": {
@@ -179,27 +119,17 @@
 				},
 				{
 					"name": "Logout All Sessions",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    // Clear all tokens",
-									"    pm.collectionVariables.set('access_token', '');",
-									"    pm.collectionVariables.set('refresh_token', '');",
-									"    console.log('All tokens cleared');",
-									"    ",
-									"    pm.test('Logout all sessions successful', function () {",
-									"        pm.response.to.have.status(200);",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [],
 						"url": {
@@ -218,6 +148,16 @@
 				{
 					"name": "Get User Sessions",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -241,10 +181,20 @@
 				{
 					"name": "Get All Ingredients",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/ingredients?page=1&pageSize=20&search=&sortBy=nguyenlieuId&sortDir=asc",
+							"raw": "{{base_url}}/api/ingredients?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
 							"host": [
 								"{{base_url}}"
 							],
@@ -255,28 +205,23 @@
 							"query": [
 								{
 									"key": "page",
-									"value": "1",
-									"description": "Page number (default: 1)"
+									"value": "1"
 								},
 								{
 									"key": "pageSize",
-									"value": "20",
-									"description": "Items per page (default: 10)"
+									"value": "10"
 								},
 								{
 									"key": "search",
-									"value": "",
-									"description": "Search term (searches in nguyenlieuId, tennguyenlieu, nhomvatlieu)"
+									"value": ""
 								},
 								{
 									"key": "sortBy",
-									"value": "nguyenlieuId",
-									"description": "Sort field (nguyenlieuId, tennguyenlieu, nhomvatlieu, donvi)"
+									"value": ""
 								},
 								{
 									"key": "sortDir",
-									"value": "asc",
-									"description": "Sort direction (asc, desc)"
+									"value": "asc"
 								}
 							]
 						}
@@ -286,6 +231,16 @@
 				{
 					"name": "Get Ingredient by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -300,8 +255,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "NVL001"
+									"key": "id"
 								}
 							]
 						}
@@ -311,6 +265,16 @@
 				{
 					"name": "Create Ingredient",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -320,7 +284,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"nguyenlieuId\": \"NVL001\",\n    \"tennguyenlieu\": \"Thịt heo\",\n    \"tinhchat\": \"Tươi sống\",\n    \"nhomvatlieu\": \"Thịt\",\n    \"donvi\": \"kg\"\n}"
+							"raw": "{\n    \"tennguyenlieu\": \"Cà chua\",\n    \"donvi\": \"kg\",\n    \"dongia\": 25000,\n    \"mota\": \"Cà chua tươi\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/ingredients",
@@ -338,6 +302,16 @@
 				{
 					"name": "Update Ingredient",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -347,7 +321,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tennguyenlieu\": \"Thịt heo ba chỉ\",\n    \"tinhchat\": \"Tươi sống\",\n    \"nhomvatlieu\": \"Thịt\",\n    \"donvi\": \"kg\"\n}"
+							"raw": "{\n    \"tennguyenlieu\": \"Cà chua bi\",\n    \"donvi\": \"kg\",\n    \"dongia\": 30000,\n    \"mota\": \"Cà chua bi tươi\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/ingredients/:id",
@@ -361,8 +335,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "NVL001"
+									"key": "id"
 								}
 							]
 						}
@@ -372,6 +345,16 @@
 				{
 					"name": "Delete Ingredient",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -386,8 +369,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "NVL001"
+									"key": "id"
 								}
 							]
 						}
@@ -402,10 +384,20 @@
 				{
 					"name": "Get All Kitchens",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/kitchens?page=1&pageSize=20&search=&sortBy=bepId&sortDir=asc",
+							"raw": "{{base_url}}/api/kitchens?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
 							"host": [
 								"{{base_url}}"
 							],
@@ -420,17 +412,15 @@
 								},
 								{
 									"key": "pageSize",
-									"value": "20"
+									"value": "10"
 								},
 								{
 									"key": "search",
-									"value": "",
-									"description": "Search in bepId, tenbep"
+									"value": ""
 								},
 								{
 									"key": "sortBy",
-									"value": "bepId",
-									"description": "Sort by: bepId, tenbep, diachi"
+									"value": ""
 								},
 								{
 									"key": "sortDir",
@@ -444,6 +434,16 @@
 				{
 					"name": "Get Kitchen by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -458,8 +458,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "BEP001"
+									"key": "id"
 								}
 							]
 						}
@@ -469,6 +468,16 @@
 				{
 					"name": "Create Kitchen",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -478,7 +487,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"bepId\": \"BEP001\",\n    \"tenbep\": \"Bếp Trung Tâm\",\n    \"diachi\": \"123 Đường ABC, Quận 1, TP.HCM\",\n    \"sodienthoai\": \"0901234567\",\n    \"nguoiquanly\": \"Nguyễn Văn A\"\n}"
+							"raw": "{\n    \"tenbep\": \"Bếp Chính\",\n    \"vitri\": \"Tầng 1\",\n    \"mota\": \"Bếp chính phục vụ toàn bộ nhà hàng\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/kitchens",
@@ -496,6 +505,16 @@
 				{
 					"name": "Update Kitchen",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -505,7 +524,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenbep\": \"Bếp Trung Tâm - Cơ sở 1\",\n    \"diachi\": \"123 Đường ABC, Quận 1, TP.HCM\",\n    \"sodienthoai\": \"0901234567\",\n    \"nguoiquanly\": \"Nguyễn Văn B\"\n}"
+							"raw": "{\n    \"tenbep\": \"Bếp Chính - Cập nhật\",\n    \"vitri\": \"Tầng 1\",\n    \"mota\": \"Bếp chính đã được nâng cấp\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/kitchens/:id",
@@ -519,8 +538,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "BEP001"
+									"key": "id"
 								}
 							]
 						}
@@ -530,6 +548,16 @@
 				{
 					"name": "Delete Kitchen",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -544,8 +572,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "BEP001"
+									"key": "id"
 								}
 							]
 						}
@@ -560,10 +587,20 @@
 				{
 					"name": "Get All Users",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/users?page=1&pageSize=20&search=&sortBy=userid&sortDir=asc",
+							"raw": "{{base_url}}/api/users?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
 							"host": [
 								"{{base_url}}"
 							],
@@ -578,17 +615,15 @@
 								},
 								{
 									"key": "pageSize",
-									"value": "20"
+									"value": "10"
 								},
 								{
 									"key": "search",
-									"value": "",
-									"description": "Search in userid, hoten, email"
+									"value": ""
 								},
 								{
 									"key": "sortBy",
-									"value": "userid",
-									"description": "Sort by: userid, hoten, email, role"
+									"value": ""
 								},
 								{
 									"key": "sortDir",
@@ -602,6 +637,16 @@
 				{
 					"name": "Get User by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -616,8 +661,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "admin"
+									"key": "id"
 								}
 							]
 						}
@@ -627,6 +671,16 @@
 				{
 					"name": "Create User",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -636,7 +690,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"userid\": \"user001\",\n    \"hoten\": \"Nguyễn Văn A\",\n    \"email\": \"nguyenvana@example.com\",\n    \"password\": \"password123\",\n    \"role\": \"user\",\n    \"sodienthoai\": \"0901234567\"\n}"
+							"raw": "{\n    \"userid\": \"user123\",\n    \"password\": \"password123\",\n    \"hovaten\": \"Nguyễn Văn A\",\n    \"email\": \"nguyenvana@example.com\",\n    \"sodienthoai\": \"0123456789\",\n    \"role\": \"user\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/users",
@@ -654,6 +708,16 @@
 				{
 					"name": "Update User",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -663,7 +727,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"hoten\": \"Nguyễn Văn A - Updated\",\n    \"email\": \"nguyenvana.updated@example.com\",\n    \"role\": \"admin\",\n    \"sodienthoai\": \"0901234568\"\n}"
+							"raw": "{\n    \"hovaten\": \"Nguyễn Văn A (Updated)\",\n    \"email\": \"nguyenvana.updated@example.com\",\n    \"sodienthoai\": \"0987654321\",\n    \"role\": \"user\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/users/:id",
@@ -677,8 +741,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "user001"
+									"key": "id"
 								}
 							]
 						}
@@ -688,6 +751,16 @@
 				{
 					"name": "Delete User",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -702,8 +775,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "user001"
+									"key": "id"
 								}
 							]
 						}
@@ -718,10 +790,20 @@
 				{
 					"name": "Get All Dishes",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/dishes?page=1&pageSize=20&search=&sortBy=monanid&sortDir=asc",
+							"raw": "{{base_url}}/api/dishes?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
 							"host": [
 								"{{base_url}}"
 							],
@@ -736,17 +818,15 @@
 								},
 								{
 									"key": "pageSize",
-									"value": "20"
+									"value": "10"
 								},
 								{
 									"key": "search",
-									"value": "",
-									"description": "Search in tenmonan, monanid, mota"
+									"value": ""
 								},
 								{
 									"key": "sortBy",
-									"value": "monanid",
-									"description": "Sort by: monanid, tenmonan, loaimonan, dongia"
+									"value": ""
 								},
 								{
 									"key": "sortDir",
@@ -758,8 +838,18 @@
 					"response": []
 				},
 				{
-					"name": "Get Dish by ID",
+					"name": "Get Dishe by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -774,8 +864,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "MON001"
+									"key": "id"
 								}
 							]
 						}
@@ -783,8 +872,18 @@
 					"response": []
 				},
 				{
-					"name": "Create Dish",
+					"name": "Create Dishe",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -794,7 +893,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"monanid\": \"MON001\",\n    \"tenmonan\": \"Cơm tấm sườn bì chả\",\n    \"loaimonan\": \"Cơm\",\n    \"mota\": \"Cơm tấm với sườn nướng, bì và chả\",\n    \"dongia\": 45000,\n    \"trangthai\": \"active\"\n}"
+							"raw": "{\n    \"tenmonan\": \"Phở Bò\",\n    \"loaimonan\": \"Món chính\",\n    \"dongia\": 50000,\n    \"mota\": \"Phở bò truyền thống Hà Nội\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/dishes",
@@ -810,8 +909,18 @@
 					"response": []
 				},
 				{
-					"name": "Update Dish",
+					"name": "Update Dishe",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -821,7 +930,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenmonan\": \"Cơm tấm sườn bì chả đặc biệt\",\n    \"loaimonan\": \"Cơm\",\n    \"mota\": \"Cơm tấm với sườn nướng, bì và chả - Phần ăn lớn hơn\",\n    \"dongia\": 55000,\n    \"trangthai\": \"active\"\n}"
+							"raw": "{\n    \"tenmonan\": \"Phở Bò Đặc Biệt\",\n    \"loaimonan\": \"Món chính\",\n    \"dongia\": 60000,\n    \"mota\": \"Phở bò đặc biệt với nhiều thịt\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/dishes/:id",
@@ -835,8 +944,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "MON001"
+									"key": "id"
 								}
 							]
 						}
@@ -844,8 +952,18 @@
 					"response": []
 				},
 				{
-					"name": "Delete Dish",
+					"name": "Delete Dishe",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -860,8 +978,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "MON001"
+									"key": "id"
 								}
 							]
 						}
@@ -871,21 +988,31 @@
 			]
 		},
 		{
-			"name": "Suppliers",
+			"name": "Orders",
 			"item": [
 				{
-					"name": "Get All Suppliers",
+					"name": "Get All Orders",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/suppliers?page=1&pageSize=20&search=&sortBy=nhacungcapId&sortDir=asc",
+							"raw": "{{base_url}}/api/orders?page=1&per_page=10&search=&sortBy=&sortDir=asc",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"suppliers"
+								"orders"
 							],
 							"query": [
 								{
@@ -893,18 +1020,16 @@
 									"value": "1"
 								},
 								{
-									"key": "pageSize",
-									"value": "20"
+									"key": "per_page",
+									"value": "10"
 								},
 								{
 									"key": "search",
-									"value": "",
-									"description": "Search in nhacungcapId, tennhacungcap, diachi"
+									"value": ""
 								},
 								{
 									"key": "sortBy",
-									"value": "nhacungcapId",
-									"description": "Sort by: nhacungcapId, tennhacungcap, diachi"
+									"value": ""
 								},
 								{
 									"key": "sortDir",
@@ -916,24 +1041,34 @@
 					"response": []
 				},
 				{
-					"name": "Get Supplier by ID",
+					"name": "Get Order by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/suppliers/:id",
+							"raw": "{{base_url}}/api/orders/:id",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"suppliers",
+								"orders",
 								":id"
 							],
 							"variable": [
 								{
 									"key": "id",
-									"value": "NCC001"
+									"value": ""
 								}
 							]
 						}
@@ -941,8 +1076,18 @@
 					"response": []
 				},
 				{
-					"name": "Create Supplier",
+					"name": "Create Order",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -952,24 +1097,34 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"nhacungcapId\": \"NCC001\",\n    \"tennhacungcap\": \"Công ty TNHH Thực phẩm ABC\",\n    \"diachi\": \"456 Đường XYZ, Quận 3, TP.HCM\",\n    \"sodienthoai\": \"0287654321\",\n    \"email\": \"contact@abc-food.com\",\n    \"nguoilienhe\": \"Trần Văn B\"\n}"
+							"raw": "{\n  \"kitchenId\": \"BEP001\",\n  \"orderDate\": \"2025-11-02\",\n  \"note\": \"Order for lunch service\",\n  \"status\": \"Pending\",\n  \"details\": [\n    {\n      \"dishId\": \"PHO001\",\n      \"dishName\": \"Phở Bò\",\n      \"portions\": 150,\n      \"ingredients\": [\n        {\n          \"ingredientId\": \"NL001\",\n          \"ingredientName\": \"Thịt bò\",\n          \"quantity\": 9.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.06\n        },\n        {\n          \"ingredientId\": \"NL002\",\n          \"ingredientName\": \"Bánh phở\",\n          \"quantity\": 15.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.1\n        },\n        {\n          \"ingredientId\": \"NL003\",\n          \"ingredientName\": \"Hành lá\",\n          \"quantity\": 1.5,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.01\n        }\n      ]\n    },\n    {\n      \"dishId\": \"COM001\",\n      \"dishName\": \"Cơm rang\",\n      \"portions\": 100,\n      \"ingredients\": [\n        {\n          \"ingredientId\": \"NL004\",\n          \"ingredientName\": \"Gạo\",\n          \"quantity\": 15.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.15\n        },\n        {\n          \"ingredientId\": \"NL005\",\n          \"ingredientName\": \"Trứng gà\",\n          \"quantity\": 200,\n          \"unit\": \"quả\",\n          \"standardPerPortion\": 2\n        },\n        {\n          \"ingredientId\": \"NL006\",\n          \"ingredientName\": \"Rau củ\",\n          \"quantity\": 3.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.03\n        }\n      ]\n    }\n  ],\n  \"supplementaryFoods\": [\n    {\n      \"ingredientId\": \"NL007\",\n      \"ingredientName\": \"Nước mắm\",\n      \"quantity\": 2.0,\n      \"unit\": \"lít\",\n      \"standardPerPortion\": 0.02,\n      \"portions\": 100,\n      \"note\": \"Extra condiment\"\n    },\n    {\n      \"ingredientId\": \"NL008\",\n      \"ingredientName\": \"Tương ớt\",\n      \"quantity\": 1.5,\n      \"unit\": \"lít\",\n      \"standardPerPortion\": 0.015,\n      \"portions\": 100,\n      \"note\": \"Spicy sauce\"\n    }\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/suppliers",
+							"raw": "{{base_url}}/api/orders",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"suppliers"
+								"orders"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Update Supplier",
+					"name": "Update Order",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -979,22 +1134,21 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tennhacungcap\": \"Công ty TNHH Thực phẩm ABC - Chi nhánh HCM\",\n    \"diachi\": \"456 Đường XYZ, Quận 3, TP.HCM\",\n    \"sodienthoai\": \"0287654321\",\n    \"email\": \"hcm@abc-food.com\",\n    \"nguoilienhe\": \"Trần Văn C\"\n}"
+							"raw": "{\n    \"tenmonan\": \"Phở Bò Đặc Biệt\",\n    \"loaimonan\": \"Món chính\",\n    \"dongia\": 60000,\n    \"mota\": \"Phở bò đặc biệt với nhiều thịt\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/suppliers/:id",
+							"raw": "{{base_url}}/api/dishes/:id",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"suppliers",
+								"dishes",
 								":id"
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "NCC001"
+									"key": "id"
 								}
 							]
 						}
@@ -1002,24 +1156,33 @@
 					"response": []
 				},
 				{
-					"name": "Delete Supplier",
+					"name": "Delete Order",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/suppliers/:id",
+							"raw": "{{base_url}}/api/dishes/:id",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"suppliers",
+								"dishes",
 								":id"
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "NCC001"
+									"key": "id"
 								}
 							]
 						}
@@ -1034,10 +1197,20 @@
 				{
 					"name": "Get All Recipe Standards",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/recipe-standards?page=1&pageSize=20&search=&sortBy=id&sortDir=asc",
+							"raw": "{{base_url}}/api/recipe-standards?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
 							"host": [
 								"{{base_url}}"
 							],
@@ -1052,17 +1225,15 @@
 								},
 								{
 									"key": "pageSize",
-									"value": "20"
+									"value": "10"
 								},
 								{
 									"key": "search",
-									"value": "",
-									"description": "Search in dishId, ingredientId"
+									"value": ""
 								},
 								{
 									"key": "sortBy",
-									"value": "id",
-									"description": "Sort by: id, dishId, ingredientId, standardPer1"
+									"value": ""
 								},
 								{
 									"key": "sortDir",
@@ -1076,6 +1247,16 @@
 				{
 					"name": "Get Recipe Standard by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -1090,34 +1271,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "1"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Recipe Standards by Dish",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/recipe-standards/dish/:dishId",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"recipe-standards",
-								"dish",
-								":dishId"
-							],
-							"variable": [
-								{
-									"key": "dishId",
-									"value": "MON001"
+									"key": "id"
 								}
 							]
 						}
@@ -1127,6 +1281,16 @@
 				{
 					"name": "Create Recipe Standard",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -1136,7 +1300,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"dishId\": \"MON001\",\n    \"ingredientId\": \"NVL001\",\n    \"unit\": \"kg\",\n    \"standardPer1\": 0.5,\n    \"note\": \"Thịt ba chỉ cho 1 suất\",\n    \"amount\": 50000,\n    \"updatedById\": \"admin\"\n}"
+							"raw": "{\n    \"monanid\": 1,\n    \"nguyenlieuId\": 1,\n    \"soluong\": 0.5,\n    \"donvi\": \"kg\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/recipe-standards",
@@ -1154,6 +1318,16 @@
 				{
 					"name": "Update Recipe Standard",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -1163,7 +1337,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"standardPer1\": 0.6,\n    \"note\": \"Tăng định mức thịt cho 1 suất\",\n    \"amount\": 60000,\n    \"updatedById\": \"admin\"\n}"
+							"raw": "{\n    \"monanid\": 1,\n    \"nguyenlieuId\": 1,\n    \"soluong\": 0.7,\n    \"donvi\": \"kg\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/recipe-standards/:id",
@@ -1177,8 +1351,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "1"
+									"key": "id"
 								}
 							]
 						}
@@ -1188,6 +1361,16 @@
 				{
 					"name": "Delete Recipe Standard",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -1202,8 +1385,42 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "1"
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recipe Standards by Dish",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/recipe-standards/dish/:dishId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"recipe-standards",
+								"dish",
+								":dishId"
+							],
+							"variable": [
+								{
+									"key": "dishId"
 								}
 							]
 						}
@@ -1218,10 +1435,20 @@
 				{
 					"name": "Get All Supplier Prices",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/supplier-prices?page=1&pageSize=20&search=&sortBy=id&sortDir=asc",
+							"raw": "{{base_url}}/api/supplier-prices?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
 							"host": [
 								"{{base_url}}"
 							],
@@ -1236,17 +1463,15 @@
 								},
 								{
 									"key": "pageSize",
-									"value": "20"
+									"value": "10"
 								},
 								{
 									"key": "search",
-									"value": "",
-									"description": "Search in productName, ingredientId, supplierId"
+									"value": ""
 								},
 								{
 									"key": "sortBy",
-									"value": "id",
-									"description": "Sort by: id, productName, supplierId, unitPrice"
+									"value": ""
 								},
 								{
 									"key": "sortDir",
@@ -1258,8 +1483,88 @@
 					"response": []
 				},
 				{
+					"name": "Get Supplier Prices by Ingredient",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices/ingredient/:ingredientId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices",
+								"ingredient",
+								":ingredientId"
+							],
+							"variable": [
+								{
+									"key": "ingredientId"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier Prices by Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices/supplier/:supplierId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices",
+								"supplier",
+								":supplierId"
+							],
+							"variable": [
+								{
+									"key": "supplierId"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Get Supplier Price by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -1274,8 +1579,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "1"
+									"key": "id"
 								}
 							]
 						}
@@ -1285,6 +1589,16 @@
 				{
 					"name": "Create Supplier Price",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -1294,7 +1608,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"productName\": \"Thịt heo ba chỉ loại 1\",\n    \"ingredientId\": \"NVL001\",\n    \"category\": \"Thịt tươi\",\n    \"supplierId\": \"NCC001\",\n    \"manufacturer\": \"Vissan\",\n    \"unit\": \"kg\",\n    \"specification\": \"1kg/túi\",\n    \"unitPrice\": 120000,\n    \"pricePer1\": 120000,\n    \"effectiveFrom\": \"2025-01-01T00:00:00Z\",\n    \"effectiveTo\": \"2025-12-31T23:59:59Z\",\n    \"active\": true,\n    \"newPrice\": 0,\n    \"promotion\": \"\"\n}"
+							"raw": "{\n    \"nhacungcapid\": 1,\n    \"nguyenlieuId\": 1,\n    \"dongia\": 25000,\n    \"ngaycapnhat\": \"2025-10-25T00:00:00Z\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/supplier-prices",
@@ -1312,6 +1626,16 @@
 				{
 					"name": "Update Supplier Price",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -1321,7 +1645,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"unitPrice\": 125000,\n    \"pricePer1\": 125000,\n    \"newPrice\": 125000,\n    \"promotion\": \"Y\"\n}"
+							"raw": "{\n    \"nhacungcapid\": 1,\n    \"nguyenlieuId\": 1,\n    \"dongia\": 28000,\n    \"ngaycapnhat\": \"2025-10-25T00:00:00Z\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/supplier-prices/:id",
@@ -1335,8 +1659,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "1"
+									"key": "id"
 								}
 							]
 						}
@@ -1346,6 +1669,16 @@
 				{
 					"name": "Delete Supplier Price",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -1360,8 +1693,7 @@
 							],
 							"variable": [
 								{
-									"key": "id",
-									"value": "1"
+									"key": "id"
 								}
 							]
 						}
@@ -1372,53 +1704,231 @@
 		},
 		{
 			"name": "Health Check",
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/health",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"health"
-					]
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						}
+					},
+					"response": []
 				}
-			},
-			"response": []
-		}
-	],
-	"auth": {
-		"type": "bearer",
-		"bearer": [
-			{
-				"key": "token",
-				"value": "{{access_token}}",
-				"type": "string"
-			}
-		]
-	},
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					""
-				]
-			}
+			]
 		},
 		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					""
-				]
-			}
+			"name": "Suppliers",
+			"item": [
+				{
+					"name": "Get All Suppliers",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/suppliers?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "sortBy",
+									"value": ""
+								},
+								{
+									"key": "sortDir",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/suppliers/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tennhacungcap\": \"Công ty TNHH ABC\",\n    \"diachi\": \"123 Đường ABC, Hà Nội\",\n    \"sodienthoai\": \"0241234567\",\n    \"email\": \"contact@abc.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/suppliers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tennhacungcap\": \"Công ty TNHH ABC (Updated)\",\n    \"diachi\": \"456 Đường XYZ, Hà Nội\",\n    \"sodienthoai\": \"0247654321\",\n    \"email\": \"info@abc.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/suppliers/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/suppliers/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"variable": [
@@ -1439,8 +1949,7 @@
 		},
 		{
 			"key": "token_expire",
-			"value": "",
-			"type": "string"
+			"value": ""
 		}
 	]
 }

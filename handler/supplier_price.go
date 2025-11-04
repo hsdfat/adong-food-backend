@@ -23,7 +23,7 @@ func GetSupplierPrices(c *gin.Context) {
 	// Get date range parameters
 	effectiveFrom := c.Query("effective_from")
 	effectiveTo := c.Query("effective_to")
-	logger.Log.Debug("receive query","Effective From:", effectiveFrom, "Effective To:", effectiveTo)
+	logger.Log.Debug("receive query", "Effective From:", effectiveFrom, "Effective To:", effectiveTo)
 
 	params = models.GetPaginationParams(
 		params.Page,
@@ -37,14 +37,14 @@ func GetSupplierPrices(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.SupplierPrice{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"tensanpham", "nguyenlieuid", "nhacungcapid", "phanloai"},
+		Fields: []string{"product_name", "ingredient_id", "supplier_id", "classification"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
-	
+
 	// Apply date range filters for counting
 	countDB = applyDateRangeFilter(countDB, effectiveFrom, effectiveTo)
-	
+
 	fmt.Println(params.Search)
 	if err := countDB.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -59,13 +59,13 @@ func GetSupplierPrices(c *gin.Context) {
 	db = applyDateRangeFilter(db, effectiveFrom, effectiveTo)
 
 	allowedSortFields := map[string]string{
-		"sanphamid":    "sanphamid",
-		"tensanpham":   "tensanpham",
-		"nguyenlieuid": "nguyenlieuid",
-		"nhacungcapid": "nhacungcapid",
-		"dongia":       "dongia",
-		"hieuluctu":    "hieuluctu",
-		"hieulucden":   "hieulucden",
+		"product_id":     "product_id",
+		"product_name":   "product_name",
+		"ingredient_id":  "ingredient_id",
+		"supplier_id":    "supplier_id",
+		"unit_price":     "unit_price",
+		"effective_from": "effective_from",
+		"effective_to":   "effective_to",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -125,7 +125,7 @@ func applyDateRangeFilter(db *gorm.DB, effectiveFrom, effectiveTo string) *gorm.
 	if effectiveFrom != "" && effectiveTo != "" {
 		fromDate, errFrom := time.Parse("2006-01-02", effectiveFrom)
 		toDate, errTo := time.Parse("2006-01-02", effectiveTo)
-		
+
 		if errFrom == nil && errTo == nil {
 			// toDateEnd := toDate.Add(24 * time.Hour)
 			// Records where:
@@ -150,7 +150,7 @@ func GetSupplierPrice(c *gin.Context) {
 	if err := store.DB.GormClient.
 		Preload("Ingredient").
 		Preload("Supplier").
-		First(&price, "sanphamid = ?", id).Error; err != nil {
+		First(&price, "product_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier price not found"})
 		return
 	}
@@ -179,7 +179,7 @@ func GetSupplierPricesByIngredient(c *gin.Context) {
 	)
 
 	var total int64
-	countDB := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("nguyenlieuid = ?", ingredientId)
+	countDB := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("ingredient_id = ?", ingredientId)
 
 	searchConfig := utils.SearchConfig{
 		Fields: []string{"tensanpham", "nhacungcapid", "phanloai"},
@@ -193,15 +193,15 @@ func GetSupplierPricesByIngredient(c *gin.Context) {
 	}
 
 	var prices []models.SupplierPrice
-	db := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("nguyenlieuid = ?", ingredientId)
+	db := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("ingredient_id = ?", ingredientId)
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"sanphamid":    "sanphamid",
-		"tensanpham":   "tensanpham",
-		"nhacungcapid": "nhacungcapid",
-		"dongia":       "dongia",
-		"hieuluctu":    "hieuluctu",
+		"product_id":     "product_id",
+		"product_name":   "product_name",
+		"supplier_id":    "supplier_id",
+		"unit_price":     "unit_price",
+		"effective_from": "effective_from",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -243,7 +243,7 @@ func GetSupplierPricesBySupplier(c *gin.Context) {
 	)
 
 	var total int64
-	countDB := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("nhacungcapid = ?", supplierId)
+	countDB := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("supplier_id = ?", supplierId)
 
 	searchConfig := utils.SearchConfig{
 		Fields: []string{"tensanpham", "nguyenlieuid", "phanloai"},
@@ -257,15 +257,15 @@ func GetSupplierPricesBySupplier(c *gin.Context) {
 	}
 
 	var prices []models.SupplierPrice
-	db := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("nhacungcapid = ?", supplierId)
+	db := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("supplier_id = ?", supplierId)
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"sanphamid":    "sanphamid",
-		"tensanpham":   "tensanpham",
-		"nguyenlieuid": "nguyenlieuid",
-		"dongia":       "dongia",
-		"hieuluctu":    "hieuluctu",
+		"product_id":     "product_id",
+		"product_name":   "product_name",
+		"ingredient_id":  "ingredient_id",
+		"unit_price":     "unit_price",
+		"effective_from": "effective_from",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -303,7 +303,7 @@ func CreateSupplierPrice(c *gin.Context) {
 	store.DB.GormClient.
 		Preload("Ingredient").
 		Preload("Supplier").
-		First(&price, "sanphamid = ?", price.ProductID)
+		First(&price, "product_id = ?", price.ProductID)
 
 	// Return DTO with names
 	dto := price.ToDTO()
@@ -313,7 +313,7 @@ func CreateSupplierPrice(c *gin.Context) {
 func UpdateSupplierPrice(c *gin.Context) {
 	id := c.Param("id")
 	var price models.SupplierPrice
-	if err := store.DB.GormClient.First(&price, "sanphamid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&price, "product_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier price not found"})
 		return
 	}
@@ -330,7 +330,7 @@ func UpdateSupplierPrice(c *gin.Context) {
 	store.DB.GormClient.
 		Preload("Ingredient").
 		Preload("Supplier").
-		First(&price, "sanphamid = ?", price.ProductID)
+		First(&price, "product_id = ?", price.ProductID)
 
 	// Return DTO with names
 	dto := price.ToDTO()
@@ -339,7 +339,7 @@ func UpdateSupplierPrice(c *gin.Context) {
 
 func DeleteSupplierPrice(c *gin.Context) {
 	id := c.Param("id")
-	if err := store.DB.GormClient.Delete(&models.SupplierPrice{}, "sanphamid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.Delete(&models.SupplierPrice{}, "product_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

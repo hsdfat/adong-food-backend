@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS public.master_users (
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT fk_users_kitchen FOREIGN KEY (kitchen_id)
         REFERENCES public.master_kitchens(kitchen_id)
+        ON UPDATE CASCADE ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.master_dishes (
@@ -69,11 +70,8 @@ CREATE TABLE IF NOT EXISTS public.master_ingredients (
 -- SUPPLIER PRICE LIST
 -- ========================
 
-CREATE SEQUENCE IF NOT EXISTS public.supplier_price_list_product_id_seq
-    START 1 INCREMENT 1 OWNED BY public.supplier_price_list.product_id;
-
 CREATE TABLE IF NOT EXISTS public.supplier_price_list (
-    product_id INTEGER PRIMARY KEY DEFAULT nextval('public.supplier_price_list_product_id_seq'),
+    product_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     product_name VARCHAR(255),
     ingredient_id VARCHAR(50) NOT NULL,
     classification VARCHAR(100),
@@ -90,7 +88,6 @@ CREATE TABLE IF NOT EXISTS public.supplier_price_list (
     promotion CHAR(1),
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
     CONSTRAINT fk_price_ingredient FOREIGN KEY (ingredient_id)
         REFERENCES public.master_ingredients(ingredient_id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -106,11 +103,8 @@ CREATE INDEX IF NOT EXISTS idx_supplier_price_supplier ON public.supplier_price_
 -- DISH RECIPE STANDARDS
 -- ========================
 
-CREATE SEQUENCE IF NOT EXISTS public.dish_recipe_standards_recipe_id_seq
-    START 1 INCREMENT 1 OWNED BY public.dish_recipe_standards.recipe_id;
-
 CREATE TABLE IF NOT EXISTS public.dish_recipe_standards (
-    recipe_id INTEGER PRIMARY KEY DEFAULT nextval('public.dish_recipe_standards_recipe_id_seq'),
+    recipe_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     dish_id VARCHAR(50) NOT NULL,
     ingredient_id VARCHAR(50) NOT NULL,
     unit VARCHAR(50) NOT NULL,
@@ -120,7 +114,6 @@ CREATE TABLE IF NOT EXISTS public.dish_recipe_standards (
     updated_by_user_id VARCHAR(50),
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
     CONSTRAINT fk_recipe_dish FOREIGN KEY (dish_id)
         REFERENCES public.master_dishes(dish_id)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -140,7 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_recipe_ingredient ON public.dish_recipe_standards
 -- ========================
 
 CREATE TABLE IF NOT EXISTS public.orders (
-    order_id SERIAL PRIMARY KEY,
+    order_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     kitchen_id VARCHAR(50) NOT NULL,
     order_date DATE NOT NULL,
     note TEXT,
@@ -148,7 +141,6 @@ CREATE TABLE IF NOT EXISTS public.orders (
     created_by_user_id VARCHAR(50),
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
     CONSTRAINT fk_order_kitchen FOREIGN KEY (kitchen_id)
         REFERENCES public.master_kitchens(kitchen_id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -158,14 +150,13 @@ CREATE TABLE IF NOT EXISTS public.orders (
 );
 
 CREATE TABLE IF NOT EXISTS public.order_details (
-    order_detail_id SERIAL PRIMARY KEY,
+    order_detail_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_id INTEGER NOT NULL,
     dish_id VARCHAR(50) NOT NULL,
     portions INTEGER NOT NULL CHECK (portions > 0),
     note TEXT,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
     CONSTRAINT fk_detail_order FOREIGN KEY (order_id)
         REFERENCES public.orders(order_id)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -175,7 +166,7 @@ CREATE TABLE IF NOT EXISTS public.order_details (
 );
 
 CREATE TABLE IF NOT EXISTS public.order_ingredients (
-    order_ingredient_id SERIAL PRIMARY KEY,
+    order_ingredient_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_detail_id INTEGER NOT NULL,
     ingredient_id VARCHAR(50) NOT NULL,
     quantity NUMERIC(15,4) NOT NULL CHECK (quantity > 0),
@@ -183,7 +174,6 @@ CREATE TABLE IF NOT EXISTS public.order_ingredients (
     standard_per_portion NUMERIC(10,4),
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
     CONSTRAINT fk_order_ing_detail FOREIGN KEY (order_detail_id)
         REFERENCES public.order_details(order_detail_id)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -193,7 +183,7 @@ CREATE TABLE IF NOT EXISTS public.order_ingredients (
 );
 
 CREATE TABLE IF NOT EXISTS public.order_supplementary_foods (
-    supplementary_id SERIAL PRIMARY KEY,
+    supplementary_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_id INTEGER NOT NULL,
     ingredient_id VARCHAR(50) NOT NULL,
     quantity NUMERIC(15,4) NOT NULL CHECK (quantity > 0),
@@ -203,7 +193,6 @@ CREATE TABLE IF NOT EXISTS public.order_supplementary_foods (
     note TEXT,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
     CONSTRAINT fk_supp_order FOREIGN KEY (order_id)
         REFERENCES public.orders(order_id)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -217,13 +206,12 @@ CREATE TABLE IF NOT EXISTS public.order_supplementary_foods (
 -- ========================
 
 CREATE TABLE IF NOT EXISTS public.supplier_requests (
-    request_id SERIAL PRIMARY KEY,
+    request_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_id INTEGER NOT NULL,
     supplier_id VARCHAR(50) NOT NULL,
     status VARCHAR(50) DEFAULT 'Pending' NOT NULL,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
     CONSTRAINT fk_req_order FOREIGN KEY (order_id)
         REFERENCES public.orders(order_id)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -233,7 +221,7 @@ CREATE TABLE IF NOT EXISTS public.supplier_requests (
 );
 
 CREATE TABLE IF NOT EXISTS public.supplier_request_details (
-    request_detail_id SERIAL PRIMARY KEY,
+    request_detail_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     request_id INTEGER NOT NULL,
     ingredient_id VARCHAR(50) NOT NULL,
     quantity NUMERIC(15,4) NOT NULL CHECK (quantity > 0),
@@ -242,7 +230,6 @@ CREATE TABLE IF NOT EXISTS public.supplier_request_details (
     total_price NUMERIC(15,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
     CONSTRAINT fk_req_detail_request FOREIGN KEY (request_id)
         REFERENCES public.supplier_requests(request_id)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -252,7 +239,7 @@ CREATE TABLE IF NOT EXISTS public.supplier_request_details (
 );
 
 -- ========================
--- OPTIONAL PERFORMANCE INDEXES
+-- INDEXES (PERFORMANCE)
 -- ========================
 
 CREATE INDEX IF NOT EXISTS idx_orders_kitchen ON public.orders (kitchen_id);

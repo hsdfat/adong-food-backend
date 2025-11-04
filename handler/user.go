@@ -29,7 +29,7 @@ func GetUsers(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.User{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"userid", "hoten", "email", "sodienthoai"},
+		Fields: []string{"user_id", "user_name", "full_name", "email", "phone"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -44,10 +44,11 @@ func GetUsers(c *gin.Context) {
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"userid": "userid",
-		"hoten":  "hoten",
-		"email":  "email",
-		"role":   "role",
+		"user_id":   "user_id",
+		"user_name": "user_name",
+		"full_name": "full_name",
+		"email":     "email",
+		"role":      "role",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -67,7 +68,7 @@ func GetUsers(c *gin.Context) {
 func GetUser(c *gin.Context) {
 	id := c.Param("id")
 	var item models.User
-	if err := store.DB.GormClient.First(&item, "userid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&item, "user_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
@@ -90,7 +91,7 @@ func CreateUser(c *gin.Context) {
 func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	var item models.User
-	if err := store.DB.GormClient.First(&item, "userid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&item, "user_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
@@ -107,7 +108,7 @@ func UpdateUser(c *gin.Context) {
 
 func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
-	if err := store.DB.GormClient.Delete(&models.User{}, "userid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.Delete(&models.User{}, "user_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

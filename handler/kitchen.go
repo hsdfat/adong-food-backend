@@ -29,7 +29,7 @@ func GetKitchens(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.Kitchen{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"tenbep", "bepid", "diachi"},
+		Fields: []string{"kitchen_name", "kitchen_id", "address"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -44,9 +44,10 @@ func GetKitchens(c *gin.Context) {
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"bepid":  "bepid",
-		"tenbep": "tenbep",
-		"diachi": "diachi",
+		"kitchen_id":   "kitchen_id",
+		"kitchen_name": "kitchen_name",
+		"address":      "address",
+		"created_date": "created_date",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -66,7 +67,7 @@ func GetKitchens(c *gin.Context) {
 func GetKitchen(c *gin.Context) {
 	id := c.Param("id")
 	var item models.Kitchen
-	if err := store.DB.GormClient.First(&item, "bepid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&item, "kitchen_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
 		return
 	}
@@ -89,7 +90,7 @@ func CreateKitchen(c *gin.Context) {
 func UpdateKitchen(c *gin.Context) {
 	id := c.Param("id")
 	var item models.Kitchen
-	if err := store.DB.GormClient.First(&item, "bepid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&item, "kitchen_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
 		return
 	}
@@ -106,7 +107,7 @@ func UpdateKitchen(c *gin.Context) {
 
 func DeleteKitchen(c *gin.Context) {
 	id := c.Param("id")
-	if err := store.DB.GormClient.Delete(&models.Kitchen{}, "bepid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.Delete(&models.Kitchen{}, "kitchen_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -29,7 +29,7 @@ func GetSuppliers(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.Supplier{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"tenncc", "nhacungcapid", "diachi", "dienthoai"},
+		Fields: []string{"supplier_name", "supplier_id", "address", "phone"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -44,9 +44,10 @@ func GetSuppliers(c *gin.Context) {
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"nhacungcapid": "nhacungcapid",
-		"tenncc":       "tenncc",
-		"diachi":       "diachi",
+		"supplier_id":   "supplier_id",
+		"supplier_name": "supplier_name",
+		"address":       "address",
+		"created_date":  "created_date",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -66,7 +67,7 @@ func GetSuppliers(c *gin.Context) {
 func GetSupplier(c *gin.Context) {
 	id := c.Param("id")
 	var item models.Supplier
-	if err := store.DB.GormClient.First(&item, "nhacungcapid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&item, "supplier_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
 		return
 	}
@@ -89,7 +90,7 @@ func CreateSupplier(c *gin.Context) {
 func UpdateSupplier(c *gin.Context) {
 	id := c.Param("id")
 	var item models.Supplier
-	if err := store.DB.GormClient.First(&item, "nhacungcapid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&item, "supplier_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
 		return
 	}
@@ -106,7 +107,7 @@ func UpdateSupplier(c *gin.Context) {
 
 func DeleteSupplier(c *gin.Context) {
 	id := c.Param("id")
-	if err := store.DB.GormClient.Delete(&models.Supplier{}, "nhacungcapid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.Delete(&models.Supplier{}, "supplier_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
