@@ -2,6 +2,7 @@ package handler
 
 import (
 	"adong-be/models"
+	"adong-be/logger"
 	"adong-be/store"
 	"adong-be/utils"
 	"net/http"
@@ -11,8 +12,11 @@ import (
 
 // GetUsers with pagination and search - Returns ResourceCollection format
 func GetUsers(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("GetUsers called", "user_id", uid)
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetUsers bind query error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -35,6 +39,7 @@ func GetUsers(c *gin.Context) {
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
 
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetUsers count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -54,6 +59,7 @@ func GetUsers(c *gin.Context) {
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
 
 	if err := db.Find(&items).Error; err != nil {
+		logger.Log.Error("GetUsers query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -66,9 +72,12 @@ func GetUsers(c *gin.Context) {
 }
 
 func GetUser(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("GetUser called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.User
 	if err := store.DB.GormClient.First(&item, "user_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetUser not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
@@ -76,12 +85,16 @@ func GetUser(c *gin.Context) {
 }
 
 func CreateUser(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("CreateUser called", "user_id", uid)
 	var item models.User
 	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("CreateUser bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Create(&item).Error; err != nil {
+		logger.Log.Error("CreateUser db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -89,17 +102,22 @@ func CreateUser(c *gin.Context) {
 }
 
 func UpdateUser(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("UpdateUser called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.User
 	if err := store.DB.GormClient.First(&item, "user_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateUser not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("UpdateUser bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Save(&item).Error; err != nil {
+		logger.Log.Error("UpdateUser db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -107,8 +125,11 @@ func UpdateUser(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("DeleteUser called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	if err := store.DB.GormClient.Delete(&models.User{}, "user_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteUser db error", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

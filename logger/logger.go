@@ -20,10 +20,15 @@ type Logger struct {
 }
 
 func NewLogger() *Logger {
+	// set caller skip to 2
 	cfg := zap.NewProductionConfig()
+	
 	cfg.Level.SetLevel(zapcore.DebugLevel) // Set the desired level (e.g., InfoLevel)
 	logger, _ := cfg.Build()
+	logger = logger.WithOptions(zap.AddCallerSkip(1))
+	
 	sugar := logger.Sugar()
+	
 	return &Logger{
 		SugaredLogger: sugar,
 	}

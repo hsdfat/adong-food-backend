@@ -2,6 +2,7 @@ package handler
 
 import (
 	"adong-be/models"
+	"adong-be/logger"
 	"adong-be/store"
 	"adong-be/utils"
 	"net/http"
@@ -11,8 +12,11 @@ import (
 
 // GetKitchens with pagination and search - Returns ResourceCollection format
 func GetKitchens(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("GetKitchens called", "user_id", uid)
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetKitchens bind query error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -35,6 +39,7 @@ func GetKitchens(c *gin.Context) {
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
 
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetKitchens count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -53,6 +58,7 @@ func GetKitchens(c *gin.Context) {
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
 
 	if err := db.Find(&items).Error; err != nil {
+		logger.Log.Error("GetKitchens query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -65,9 +71,12 @@ func GetKitchens(c *gin.Context) {
 }
 
 func GetKitchen(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("GetKitchen called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.Kitchen
 	if err := store.DB.GormClient.First(&item, "kitchen_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetKitchen not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
 		return
 	}
@@ -75,12 +84,16 @@ func GetKitchen(c *gin.Context) {
 }
 
 func CreateKitchen(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("CreateKitchen called", "user_id", uid)
 	var item models.Kitchen
 	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("CreateKitchen bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Create(&item).Error; err != nil {
+		logger.Log.Error("CreateKitchen db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -88,17 +101,22 @@ func CreateKitchen(c *gin.Context) {
 }
 
 func UpdateKitchen(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("UpdateKitchen called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.Kitchen
 	if err := store.DB.GormClient.First(&item, "kitchen_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateKitchen not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
 		return
 	}
 	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("UpdateKitchen bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Save(&item).Error; err != nil {
+		logger.Log.Error("UpdateKitchen db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -106,8 +124,11 @@ func UpdateKitchen(c *gin.Context) {
 }
 
 func DeleteKitchen(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("DeleteKitchen called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	if err := store.DB.GormClient.Delete(&models.Kitchen{}, "kitchen_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteKitchen db error", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

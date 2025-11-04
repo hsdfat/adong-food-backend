@@ -14,8 +14,10 @@ import (
 )
 
 func GetSupplierPrices(c *gin.Context) {
+	logger.Log.Info("GetSupplierPrices called")
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetSupplierPrices bind query error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -47,6 +49,7 @@ func GetSupplierPrices(c *gin.Context) {
 
 	fmt.Println(params.Search)
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetSupplierPrices count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -74,6 +77,7 @@ func GetSupplierPrices(c *gin.Context) {
 	db = db.Preload("Ingredient").Preload("Supplier")
 
 	if err := db.Find(&prices).Error; err != nil {
+		logger.Log.Error("GetSupplierPrices query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -143,6 +147,7 @@ func applyDateRangeFilter(db *gorm.DB, effectiveFrom, effectiveTo string) *gorm.
 }
 
 func GetSupplierPrice(c *gin.Context) {
+	logger.Log.Info("GetSupplierPrice called", "id", c.Param("id"))
 	id := c.Param("id")
 	var price models.SupplierPrice
 
@@ -151,6 +156,7 @@ func GetSupplierPrice(c *gin.Context) {
 		Preload("Ingredient").
 		Preload("Supplier").
 		First(&price, "product_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetSupplierPrice not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier price not found"})
 		return
 	}
@@ -162,6 +168,7 @@ func GetSupplierPrice(c *gin.Context) {
 
 // GetSupplierPricesByIngredient - Get all supplier prices for a specific ingredient
 func GetSupplierPricesByIngredient(c *gin.Context) {
+	logger.Log.Info("GetSupplierPricesByIngredient called", "ingredientId", c.Param("ingredientId"))
 	ingredientId := c.Param("ingredientId")
 
 	var params models.PaginationParams
@@ -188,6 +195,7 @@ func GetSupplierPricesByIngredient(c *gin.Context) {
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
 
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetSupplierPricesByIngredient count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -210,6 +218,7 @@ func GetSupplierPricesByIngredient(c *gin.Context) {
 	db = db.Preload("Ingredient").Preload("Supplier")
 
 	if err := db.Find(&prices).Error; err != nil {
+		logger.Log.Error("GetSupplierPricesByIngredient query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -226,6 +235,7 @@ func GetSupplierPricesByIngredient(c *gin.Context) {
 
 // GetSupplierPricesBySupplier - Get all supplier prices for a specific supplier
 func GetSupplierPricesBySupplier(c *gin.Context) {
+	logger.Log.Info("GetSupplierPricesBySupplier called", "supplierId", c.Param("supplierId"))
 	supplierId := c.Param("supplierId")
 
 	var params models.PaginationParams
@@ -252,6 +262,7 @@ func GetSupplierPricesBySupplier(c *gin.Context) {
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
 
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetSupplierPricesBySupplier count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -274,6 +285,7 @@ func GetSupplierPricesBySupplier(c *gin.Context) {
 	db = db.Preload("Ingredient").Preload("Supplier")
 
 	if err := db.Find(&prices).Error; err != nil {
+		logger.Log.Error("GetSupplierPricesBySupplier query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -289,12 +301,15 @@ func GetSupplierPricesBySupplier(c *gin.Context) {
 }
 
 func CreateSupplierPrice(c *gin.Context) {
+	logger.Log.Info("CreateSupplierPrice called")
 	var price models.SupplierPrice
 	if err := c.ShouldBindJSON(&price); err != nil {
+		logger.Log.Error("CreateSupplierPrice bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Create(&price).Error; err != nil {
+		logger.Log.Error("CreateSupplierPrice db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -311,17 +326,21 @@ func CreateSupplierPrice(c *gin.Context) {
 }
 
 func UpdateSupplierPrice(c *gin.Context) {
+	logger.Log.Info("UpdateSupplierPrice called", "id", c.Param("id"))
 	id := c.Param("id")
 	var price models.SupplierPrice
 	if err := store.DB.GormClient.First(&price, "product_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateSupplierPrice not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier price not found"})
 		return
 	}
 	if err := c.ShouldBindJSON(&price); err != nil {
+		logger.Log.Error("UpdateSupplierPrice bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Save(&price).Error; err != nil {
+		logger.Log.Error("UpdateSupplierPrice db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -338,8 +357,10 @@ func UpdateSupplierPrice(c *gin.Context) {
 }
 
 func DeleteSupplierPrice(c *gin.Context) {
+	logger.Log.Info("DeleteSupplierPrice called", "id", c.Param("id"))
 	id := c.Param("id")
 	if err := store.DB.GormClient.Delete(&models.SupplierPrice{}, "product_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteSupplierPrice db error", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"adong-be/logger"
 	"adong-be/models"
 	"adong-be/store"
 	"adong-be/utils"
@@ -11,8 +12,10 @@ import (
 
 // GetRecipeStandards with pagination and search - Returns ResourceCollection format with DTOs
 func GetRecipeStandards(c *gin.Context) {
+	logger.Log.Info("GetRecipeStandards called")
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetRecipeStandards bind query error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -35,6 +38,7 @@ func GetRecipeStandards(c *gin.Context) {
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
 
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetRecipeStandards count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -56,6 +60,7 @@ func GetRecipeStandards(c *gin.Context) {
 	db = db.Preload("Dish").Preload("Ingredient").Preload("UpdatedBy")
 
 	if err := db.Find(&recipes).Error; err != nil {
+		logger.Log.Error("GetRecipeStandards query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -71,78 +76,89 @@ func GetRecipeStandards(c *gin.Context) {
 }
 
 func GetRecipeStandard(c *gin.Context) {
+	logger.Log.Info("GetRecipeStandard called", "id", c.Param("id"))
 	id := c.Param("id")
 	var recipe models.RecipeStandard
-	
+
 	// Preload related entities
 	if err := store.DB.GormClient.
 		Preload("Dish").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
 		First(&recipe, "dinhmucid = ?", id).Error; err != nil {
+		logger.Log.Error("GetRecipeStandard not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe standard not found"})
 		return
 	}
-	
+
 	// Convert to DTO and return
 	dto := recipe.ToDTO()
 	c.JSON(http.StatusOK, dto)
 }
 
 func CreateRecipeStandard(c *gin.Context) {
+	logger.Log.Info("CreateRecipeStandard called")
 	var recipe models.RecipeStandard
 	if err := c.ShouldBindJSON(&recipe); err != nil {
+		logger.Log.Error("CreateRecipeStandard bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Create(&recipe).Error; err != nil {
+		logger.Log.Error("CreateRecipeStandard db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Reload with relationships
 	store.DB.GormClient.
 		Preload("Dish").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
 		First(&recipe, "dinhmucid = ?", recipe.StandardID)
-	
+
 	// Return DTO
 	dto := recipe.ToDTO()
 	c.JSON(http.StatusCreated, dto)
 }
 
 func UpdateRecipeStandard(c *gin.Context) {
+	logger.Log.Info("UpdateRecipeStandard called", "id", c.Param("id"))
 	id := c.Param("id")
 	var recipe models.RecipeStandard
 	if err := store.DB.GormClient.First(&recipe, "dinhmucid = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateRecipeStandard not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe standard not found"})
 		return
 	}
 	if err := c.ShouldBindJSON(&recipe); err != nil {
+		logger.Log.Error("UpdateRecipeStandard bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Save(&recipe).Error; err != nil {
+		logger.Log.Error("UpdateRecipeStandard db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Reload with relationships
 	store.DB.GormClient.
 		Preload("Dish").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
 		First(&recipe, "dinhmucid = ?", recipe.StandardID)
-	
+
 	// Return DTO
 	dto := recipe.ToDTO()
 	c.JSON(http.StatusOK, dto)
 }
 
 func DeleteRecipeStandard(c *gin.Context) {
+	logger.Log.Info("DeleteRecipeStandard called", "id", c.Param("id"))
 	id := c.Param("id")
 	if err := store.DB.GormClient.Delete(&models.RecipeStandard{}, "dinhmucid = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteRecipeStandard db error", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -151,6 +167,7 @@ func DeleteRecipeStandard(c *gin.Context) {
 
 // GetRecipeStandardsByDish with pagination and search - Returns ResourceCollection format with DTOs
 func GetRecipeStandardsByDish(c *gin.Context) {
+	logger.Log.Info("GetRecipeStandardsByDish called", "dishId", c.Param("dishId"))
 	dishId := c.Param("dishId")
 
 	var params models.PaginationParams
@@ -177,6 +194,7 @@ func GetRecipeStandardsByDish(c *gin.Context) {
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
 
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetRecipeStandardsByDish count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -196,6 +214,7 @@ func GetRecipeStandardsByDish(c *gin.Context) {
 	db = db.Preload("Dish").Preload("Ingredient").Preload("UpdatedBy")
 
 	if err := db.Find(&recipes).Error; err != nil {
+		logger.Log.Error("GetRecipeStandardsByDish query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

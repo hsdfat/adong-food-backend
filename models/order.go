@@ -7,7 +7,7 @@ import "time"
 type Order struct {
 	OrderID         int       `gorm:"primaryKey;autoIncrement;column:order_id" json:"orderId"`
 	KitchenID       string    `gorm:"column:kitchen_id;not null" json:"kitchenId"`
-	OrderDate       time.Time `gorm:"column:order_date;not null" json:"orderDate"`
+	OrderDate       string    `gorm:"column:order_date;not null" json:"orderDate"`
 	Note            string    `gorm:"column:note;type:text" json:"note"`
 	Status          string    `gorm:"column:status;default:Pending;not null" json:"status"`
 	CreatedByUserID string    `gorm:"column:created_by_user_id" json:"createdByUserId"`

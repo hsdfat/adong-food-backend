@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"adong-be/logger"
 	"adong-be/models"
 	"adong-be/store"
 	"adong-be/utils"
@@ -12,8 +13,11 @@ import (
 
 // GetOrders lists orders with filters: kitchen_id, status, date range, dish_id, ingredient_id
 func GetOrders(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetOrders called", "user_id", uid)
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetOrders bind query error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -69,6 +73,7 @@ func GetOrders(c *gin.Context) {
 
 	// Count distinct orders
 	if err := db.Distinct("orders.order_id").Count(&total).Error; err != nil {
+		logger.Log.Error("GetOrders count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -87,6 +92,7 @@ func GetOrders(c *gin.Context) {
 
 	// Fetch and preload minimal relations
 	if err := db.Preload("Kitchen").Preload("CreatedBy").Find(&orders).Error; err != nil {
+		logger.Log.Error("GetOrders query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -103,6 +109,8 @@ func GetOrders(c *gin.Context) {
 
 // GetOrder returns a single order with full details
 func GetOrder(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetOrder called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var order models.Order
 	if err := store.DB.GormClient.
@@ -112,6 +120,7 @@ func GetOrder(c *gin.Context) {
 		Preload("Details.Ingredients.Ingredient").
 		Preload("SupplementaryFoods.Ingredient").
 		First(&order, "order_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetOrder not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 		return
 	}
@@ -122,8 +131,11 @@ func GetOrder(c *gin.Context) {
 
 // CreateOrder creates a new order with nested details/ingredients/supplementary foods
 func CreateOrder(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("CreateOrder called", "user_id", uid)
 	var order models.Order
 	if err := c.ShouldBindJSON(&order); err != nil {
+		logger.Log.Error("CreateOrder bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -142,6 +154,7 @@ func CreateOrder(c *gin.Context) {
 	}()
 
 	if err := tx.Create(&order).Error; err != nil {
+		logger.Log.Error("CreateOrder create header error", "error", err)
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -151,6 +164,7 @@ func CreateOrder(c *gin.Context) {
 	for i := range order.Details {
 		order.Details[i].OrderID = order.OrderID
 		if err := tx.Create(&order.Details[i]).Error; err != nil {
+			logger.Log.Error("CreateOrder create detail error", "error", err)
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -158,6 +172,7 @@ func CreateOrder(c *gin.Context) {
 		for j := range order.Details[i].Ingredients {
 			order.Details[i].Ingredients[j].OrderDetailID = order.Details[i].OrderDetailID
 			if err := tx.Create(&order.Details[i].Ingredients[j]).Error; err != nil {
+				logger.Log.Error("CreateOrder create ingredient error", "error", err)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -169,6 +184,7 @@ func CreateOrder(c *gin.Context) {
 	for i := range order.SupplementaryFoods {
 		order.SupplementaryFoods[i].OrderID = order.OrderID
 		if err := tx.Create(&order.SupplementaryFoods[i]).Error; err != nil {
+			logger.Log.Error("CreateOrder create supplementary error", "error", err)
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -176,6 +192,7 @@ func CreateOrder(c *gin.Context) {
 	}
 
 	if err := tx.Commit().Error; err != nil {
+		logger.Log.Error("CreateOrder commit error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -195,8 +212,11 @@ func CreateOrder(c *gin.Context) {
 
 // DeleteOrder deletes an order by id (cascade removes children)
 func DeleteOrder(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("DeleteOrder called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	if err := store.DB.GormClient.Delete(&models.Order{}, "order_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteOrder db error", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

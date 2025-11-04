@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"adong-be/logger"
 	"adong-be/models"
 	"adong-be/store"
 	"adong-be/utils"
@@ -11,8 +12,11 @@ import (
 
 // GetIngredients with pagination and search - Returns ResourceCollection format
 func GetIngredients(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetIngredients called", "user_id", uid)
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetIngredients bind query error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -34,6 +38,7 @@ func GetIngredients(c *gin.Context) {
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
 
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetIngredients count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -52,6 +57,7 @@ func GetIngredients(c *gin.Context) {
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
 
 	if err := db.Find(&items).Error; err != nil {
+		logger.Log.Error("GetIngredients query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -64,9 +70,12 @@ func GetIngredients(c *gin.Context) {
 }
 
 func GetIngredient(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetIngredient called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.Ingredient
 	if err := store.DB.GormClient.First(&item, "ingredient_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetIngredient not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found"})
 		return
 	}
@@ -74,12 +83,16 @@ func GetIngredient(c *gin.Context) {
 }
 
 func CreateIngredient(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("CreateIngredient called", "user_id", uid)
 	var item models.Ingredient
 	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("CreateIngredient bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Create(&item).Error; err != nil {
+		logger.Log.Error("CreateIngredient db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -87,17 +100,22 @@ func CreateIngredient(c *gin.Context) {
 }
 
 func UpdateIngredient(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("UpdateIngredient called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.Ingredient
 	if err := store.DB.GormClient.First(&item, "ingredient_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateIngredient not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found"})
 		return
 	}
 	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("UpdateIngredient bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Save(&item).Error; err != nil {
+		logger.Log.Error("UpdateIngredient db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -105,8 +123,11 @@ func UpdateIngredient(c *gin.Context) {
 }
 
 func DeleteIngredient(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("DeleteIngredient called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	if err := store.DB.GormClient.Delete(&models.Ingredient{}, "ingredient_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteIngredient db error", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

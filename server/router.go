@@ -2,6 +2,7 @@ package server
 
 import (
 	"adong-be/handler"
+	"adong-be/logger"
 	"adong-be/store"
 	"time"
 
@@ -78,6 +79,41 @@ func SetupRouter() *gin.Engine {
 		c.Next()
 	})
 
+	// Request logging middleware with user identity
+	r.Use(func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+		latency := time.Since(start)
+		status := c.Writer.Status()
+		userIDAfter, _ := c.Get("identity")
+		if len(c.Errors) > 0 {
+			logger.Log.Error("handler returned error",
+				"method", c.Request.Method,
+				"path", c.Request.URL.Path,
+				"status", status,
+				"errors", c.Errors.String(),
+				"latency", latency.String(),
+				"user_id", userIDAfter,
+			)
+		} else if status >= 400 {
+			logger.Log.Error("request completed with error status",
+				"method", c.Request.Method,
+				"path", c.Request.URL.Path,
+				"status", status,
+				"latency", latency.String(),
+				"user_id", userIDAfter,
+			)
+		} else {
+			logger.Log.Info("request completed",
+				"method", c.Request.Method,
+				"path", c.Request.URL.Path,
+				"status", status,
+				"latency", latency.String(),
+				"user_id", userIDAfter,
+			)
+		}
+	})
+
 	// API routes
 	api := r.Group("/api")
 	api.Use(authMiddleware.MiddlewareFunc())
@@ -123,16 +159,19 @@ func SetupRouter() *gin.Engine {
 
 		// Supplier price list
 		api.GET("/supplier-prices", handler.GetSupplierPrices)
-		api.GET("/supplier-prices/ingredient/:ingredientId", handler.GetSupplierPricesByIngredient) 
-		api.GET("/supplier-prices/supplier/:supplierId", handler.GetSupplierPricesBySupplier)        
+		api.GET("/supplier-prices/ingredient/:ingredientId", handler.GetSupplierPricesByIngredient)
+		api.GET("/supplier-prices/supplier/:supplierId", handler.GetSupplierPricesBySupplier)
 		api.GET("/supplier-prices/:id", handler.GetSupplierPrice)
 		api.POST("/supplier-prices", handler.CreateSupplierPrice)
 		api.PUT("/supplier-prices/:id", handler.UpdateSupplierPrice)
 		api.DELETE("/supplier-prices/:id", handler.DeleteSupplierPrice)
 
-
 		// Order forms
-		
+		api.GET("/orders", handler.GetOrders)
+		api.GET("/orders/:id", handler.GetOrder)
+		api.POST("/orders", handler.CreateOrder)
+		api.DELETE("/orders/:id", handler.DeleteOrder)
+
 		// // Order details
 		// api.GET("/order-details", handler.GetOrderDetails)
 		// api.GET("/order-details/:id", handler.GetOrderDetail)

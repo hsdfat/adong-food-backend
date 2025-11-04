@@ -7,7 +7,7 @@ type OrderDTO struct {
 	OrderID         int                     `json:"orderId"`
 	KitchenID       string                  `json:"kitchenId"`
 	KitchenName     string                  `json:"kitchenName"`
-	OrderDate       time.Time               `json:"orderDate"`
+	OrderDate       string                  `json:"orderDate"`
 	Note            string                  `json:"note"`
 	Status          string                  `json:"status"`
 	CreatedByUserID string                  `json:"createdByUserId"`

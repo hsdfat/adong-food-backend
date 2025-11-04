@@ -2,6 +2,7 @@ package handler
 
 import (
 	"adong-be/models"
+	"adong-be/logger"
 	"adong-be/store"
 	"adong-be/utils"
 	"net/http"
@@ -11,8 +12,11 @@ import (
 
 // GetSuppliers with pagination and search - Returns ResourceCollection format
 func GetSuppliers(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("GetSuppliers called", "user_id", uid)
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetSuppliers bind query error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -35,6 +39,7 @@ func GetSuppliers(c *gin.Context) {
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
 
 	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetSuppliers count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -53,6 +58,7 @@ func GetSuppliers(c *gin.Context) {
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
 
 	if err := db.Find(&items).Error; err != nil {
+		logger.Log.Error("GetSuppliers query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -65,9 +71,12 @@ func GetSuppliers(c *gin.Context) {
 }
 
 func GetSupplier(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("GetSupplier called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.Supplier
 	if err := store.DB.GormClient.First(&item, "supplier_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetSupplier not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
 		return
 	}
@@ -75,12 +84,16 @@ func GetSupplier(c *gin.Context) {
 }
 
 func CreateSupplier(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("CreateSupplier called", "user_id", uid)
 	var item models.Supplier
 	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("CreateSupplier bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Create(&item).Error; err != nil {
+		logger.Log.Error("CreateSupplier db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -88,17 +101,22 @@ func CreateSupplier(c *gin.Context) {
 }
 
 func UpdateSupplier(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("UpdateSupplier called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.Supplier
 	if err := store.DB.GormClient.First(&item, "supplier_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateSupplier not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
 		return
 	}
 	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("UpdateSupplier bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := store.DB.GormClient.Save(&item).Error; err != nil {
+		logger.Log.Error("UpdateSupplier db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -106,8 +124,11 @@ func UpdateSupplier(c *gin.Context) {
 }
 
 func DeleteSupplier(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("DeleteSupplier called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	if err := store.DB.GormClient.Delete(&models.Supplier{}, "supplier_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteSupplier db error", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
