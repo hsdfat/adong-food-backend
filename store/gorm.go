@@ -17,10 +17,10 @@ var DB *Store = &Store{}
 // Enhanced UserProvider interface
 type UserProvider interface {
 	GetUserByUsername(username string) (*core.User, error)
-	GetUserByID(userID int) (*core.User, error)
+	GetUserByID(userID string) (*core.User, error)
 	GetUserByEmail(email string) (*core.User, error)
-	UpdateUserLastLogin(userID int, lastLogin time.Time) error
-	IsUserActive(userID int) (bool, error)
+	UpdateUserLastLogin(userID string, lastLogin time.Time) error
+	IsUserActive(userID string) (bool, error)
 }
 
 func (s *Store) GetUserByUsername(username string) (*core.User, error) {
@@ -31,7 +31,7 @@ func (s *Store) GetUserByUsername(username string) (*core.User, error) {
 	return convertToCoreUser(dbUser), nil
 }
 
-func (s *Store) GetUserByID(userID int) (*core.User, error) {
+func (s *Store) GetUserByID(userID string) (*core.User, error) {
 	return nil, nil
 }
 
@@ -43,16 +43,17 @@ func (s *Store) GetUserByEmail(email string) (*core.User, error) {
 	return convertToCoreUser(user), nil
 }
 
-func (s *Store) UpdateUserLastLogin(userID int, lastLogin time.Time) error {
+func (s *Store) UpdateUserLastLogin(userID string, lastLogin time.Time) error {
 	return nil
 }
 
-func (s *Store) IsUserActive(userID int) (bool, error) {
+func (s *Store) IsUserActive(userID string) (bool, error) {
 	return true, nil
 }
 
 func convertToCoreUser(dbUser models.User) *core.User {
 	return &core.User{
+		ID: dbUser.UserID,
 		Username: dbUser.UserID,
 		Email:    dbUser.Email,
 		Password: dbUser.Password,
