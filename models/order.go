@@ -126,11 +126,3 @@ type SupplierRequestDetail struct {
 func (SupplierRequestDetail) TableName() string {
 	return "supplier_request_details"
 }
-
-func (IngredientDetail) TableName() string {
-	return "nguyen_lieu_chi_tiet"
-}
-
-func (SupplementaryFood) TableName() string {
-	return "thuc_pham_bo_sung"
-}

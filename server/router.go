@@ -132,16 +132,7 @@ func SetupRouter() *gin.Engine {
 
 
 		// Order forms
-		api.GET("/orders", handler.GetOrders)
-		api.GET("/orders/:id", handler.GetOrder)
-		api.POST("/orders", handler.CreateOrder)
-		api.PUT("/orders/:id", handler.UpdateOrder)
-		api.DELETE("/orders/:id", handler.DeleteOrder)
-		api.PATCH("/orders/:id/status", handler.UpdateOrderStatus)
-
-		// Add dish with ingredients routes
-		api.GET("/dishes/:id/with-ingredients", handler.GetDishWithIngredients)
-		api.GET("/dishes/with-ingredients", handler.GetDishesWithIngredients)
+		
 		// // Order details
 		// api.GET("/order-details", handler.GetOrderDetails)
 		// api.GET("/order-details/:id", handler.GetOrderDetail)

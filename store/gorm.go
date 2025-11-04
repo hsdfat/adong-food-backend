@@ -25,14 +25,18 @@ type UserProvider interface {
 
 func (s *Store) GetUserByUsername(username string) (*core.User, error) {
 	var dbUser models.User
-	if err := s.GormClient.First(&dbUser, "userid = ?", username).Error; err != nil {
+	if err := s.GormClient.First(&dbUser, "user_name = ?", username).Error; err != nil {
 		return nil, err
 	}
 	return convertToCoreUser(dbUser), nil
 }
 
 func (s *Store) GetUserByID(userID string) (*core.User, error) {
-	return nil, nil
+	var dbUser models.User
+	if err := s.GormClient.First(&dbUser, "user_id = ?", userID).Error; err != nil {
+		return nil, err
+	}
+	return convertToCoreUser(dbUser), nil
 }
 
 func (s *Store) GetUserByEmail(email string) (*core.User, error) {

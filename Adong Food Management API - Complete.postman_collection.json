@@ -19,15 +19,40 @@
 								"exec": [
 									"if (pm.response.code === 200) {",
 									"    var jsonData = pm.response.json();",
-									"    if (jsonData.token) {",
-									"        pm.collectionVariables.set('access_token', jsonData.token);",
+									"    ",
+									"    // Save access token",
+									"    if (jsonData.data && jsonData.data.access_token) {",
+									"        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
+									"        console.log('Access token saved:', jsonData.data.access_token);",
 									"    }",
-									"    if (jsonData.refresh_token) {",
-									"        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
+									"    ",
+									"    // Save refresh token",
+									"    if (jsonData.data && jsonData.data.refresh_token)  {",
+									"        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
+									"        console.log('Refresh token saved');",
 									"    }",
+									"    ",
+									"    // Save expire time if available",
+									"    if (jsonData.data && jsonData.data.access_token) {",
+									"        pm.collectionVariables.set('token_expire', jsonData.data.access_token);",
+									"    }",
+									"    ",
+									"    pm.test('Login successful', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    ",
+									"    pm.test('Token received', function () {",
+									"        pm.expect(jsonData.data.access_token).to.be.a('string');",
+									"    });",
+									"} else {",
+									"    pm.test('Login failed', function () {",
+									"        pm.response.to.have.status(401);",
+									"    });",
 									"}"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						}
 					],
@@ -44,7 +69,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"password123\"\n}"
+							"raw": "{\n    \"username\": \"NV001\",\n    \"password\": \"1234\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/auth/login",
@@ -1097,7 +1122,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"kitchenId\": \"BEP001\",\n  \"orderDate\": \"2025-11-02\",\n  \"note\": \"Order for lunch service\",\n  \"status\": \"Pending\",\n  \"details\": [\n    {\n      \"dishId\": \"PHO001\",\n      \"dishName\": \"Phở Bò\",\n      \"portions\": 150,\n      \"ingredients\": [\n        {\n          \"ingredientId\": \"NL001\",\n          \"ingredientName\": \"Thịt bò\",\n          \"quantity\": 9.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.06\n        },\n        {\n          \"ingredientId\": \"NL002\",\n          \"ingredientName\": \"Bánh phở\",\n          \"quantity\": 15.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.1\n        },\n        {\n          \"ingredientId\": \"NL003\",\n          \"ingredientName\": \"Hành lá\",\n          \"quantity\": 1.5,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.01\n        }\n      ]\n    },\n    {\n      \"dishId\": \"COM001\",\n      \"dishName\": \"Cơm rang\",\n      \"portions\": 100,\n      \"ingredients\": [\n        {\n          \"ingredientId\": \"NL004\",\n          \"ingredientName\": \"Gạo\",\n          \"quantity\": 15.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.15\n        },\n        {\n          \"ingredientId\": \"NL005\",\n          \"ingredientName\": \"Trứng gà\",\n          \"quantity\": 200,\n          \"unit\": \"quả\",\n          \"standardPerPortion\": 2\n        },\n        {\n          \"ingredientId\": \"NL006\",\n          \"ingredientName\": \"Rau củ\",\n          \"quantity\": 3.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.03\n        }\n      ]\n    }\n  ],\n  \"supplementaryFoods\": [\n    {\n      \"ingredientId\": \"NL007\",\n      \"ingredientName\": \"Nước mắm\",\n      \"quantity\": 2.0,\n      \"unit\": \"lít\",\n      \"standardPerPortion\": 0.02,\n      \"portions\": 100,\n      \"note\": \"Extra condiment\"\n    },\n    {\n      \"ingredientId\": \"NL008\",\n      \"ingredientName\": \"Tương ớt\",\n      \"quantity\": 1.5,\n      \"unit\": \"lít\",\n      \"standardPerPortion\": 0.015,\n      \"portions\": 100,\n      \"note\": \"Spicy sauce\"\n    }\n  ]\n}"
+							"raw": "{\n  \"kitchenId\": \"Be001\",\n  \"orderDate\": \"2025-11-02\",\n  \"note\": \"Order for lunch service\",\n  \"status\": \"Pending\",\n  \"details\": [\n    {\n      \"dishId\": \"Mo020\",\n      \"dishName\": \"\",\n      \"portions\": 150,\n      \"ingredients\": [\n        {\n          \"ingredientId\": \"Nacvai\",\n          \"ingredientName\": \"Thịt bò\",\n          \"quantity\": 9.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.06\n        }\n      ]\n    },\n    {\n      \"dishId\": \"Mo006\",\n      \"dishName\": \"Cơm rang\",\n      \"portions\": 100,\n      \"ingredients\": [\n        {\n          \"ingredientId\": \"Nacvai\",\n          \"ingredientName\": \"Gạo\",\n          \"quantity\": 15.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.15\n        },\n        {\n          \"ingredientId\": \"Xả\",\n          \"ingredientName\": \"Trứng gà\",\n          \"quantity\": 200,\n          \"unit\": \"quả\",\n          \"standardPerPortion\": 2\n        },\n        {\n          \"ingredientId\": \"Ớt\",\n          \"ingredientName\": \"Rau củ\",\n          \"quantity\": 3.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.03\n        }\n      ]\n    }\n  ],\n  \"supplementaryFoods\": [\n    {\n      \"ingredientId\": \"thitmong\",\n      \"ingredientName\": \"Nước mắm\",\n      \"quantity\": 2.0,\n      \"unit\": \"lít\",\n      \"standardPerPortion\": 0.02,\n      \"portions\": 100,\n      \"note\": \"Extra condiment\"\n    },\n    {\n      \"ingredientId\": \"Đậu phụ\",\n      \"ingredientName\": \"Tương ớt\",\n      \"quantity\": 1.5,\n      \"unit\": \"lít\",\n      \"standardPerPortion\": 0.015,\n      \"portions\": 100,\n      \"note\": \"Spicy sauce\"\n    }\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/orders",
@@ -1448,7 +1473,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/supplier-prices?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
+							"raw": "{{base_url}}/api/supplier-prices?per_page=10&sortBy=&sortDir=asc&effective_from=2024-10-01&effective_to=2026-10-01&page=1",
 							"host": [
 								"{{base_url}}"
 							],
@@ -1458,16 +1483,13 @@
 							],
 							"query": [
 								{
-									"key": "page",
-									"value": "1"
-								},
-								{
-									"key": "pageSize",
+									"key": "per_page",
 									"value": "10"
 								},
 								{
 									"key": "search",
-									"value": ""
+									"value": "ga",
+									"disabled": true
 								},
 								{
 									"key": "sortBy",
@@ -1476,6 +1498,18 @@
 								{
 									"key": "sortDir",
 									"value": "asc"
+								},
+								{
+									"key": "effective_from",
+									"value": "2024-10-01"
+								},
+								{
+									"key": "effective_to",
+									"value": "2026-10-01"
+								},
+								{
+									"key": "page",
+									"value": "1"
 								}
 							]
 						}
