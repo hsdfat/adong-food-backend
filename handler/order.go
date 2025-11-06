@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"time"
 
+	"errors"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // GetOrders lists orders with filters: kitchen_id, status, date range, dish_id, ingredient_id
@@ -558,8 +561,8 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 
 	// Find or create SupplierRequest for this order + supplier
 	var supplierRequest models.SupplierRequest
-	err := tx.Where("order_id = ? AND supplier_id = ?", orderID, request.SupplierID).First(&supplierRequest).Error
-	if err != nil {
+	findErr := tx.Where("order_id = ? AND supplier_id = ?", orderID, request.SupplierID).First(&supplierRequest).Error
+	if errors.Is(findErr, gorm.ErrRecordNotFound) {
 		// Create new supplier request
 		supplierRequest = models.SupplierRequest{
 			OrderID:    orderID,
@@ -567,12 +570,26 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 			Status:     "Pending",
 		}
 		if err := tx.Create(&supplierRequest).Error; err != nil {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier create request error", "error", err)
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			// In case of race causing unique violation, re-fetch existing
+			var existing models.SupplierRequest
+			refetchErr := tx.Where("order_id = ? AND supplier_id = ?", orderID, request.SupplierID).First(&existing).Error
+			if refetchErr == nil {
+				supplierRequest = existing
+				logger.Log.Info("SaveOrderIngredientsWithSupplier existing supplier request after race", "request_id", supplierRequest.RequestID)
+			} else {
+				logger.Log.Error("SaveOrderIngredientsWithSupplier create request error", "error", err)
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		} else {
+			logger.Log.Info("SaveOrderIngredientsWithSupplier created new supplier request", "request_id", supplierRequest.RequestID)
 		}
-		logger.Log.Info("SaveOrderIngredientsWithSupplier created new supplier request", "request_id", supplierRequest.RequestID)
+	} else if findErr != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier find request error", "error", findErr)
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": findErr.Error()})
+		return
 	} else {
 		// Update status if needed (keep existing status if not explicitly set)
 		logger.Log.Info("SaveOrderIngredientsWithSupplier found existing supplier request", "request_id", supplierRequest.RequestID)

@@ -333,4 +333,13 @@ ALTER TABLE IF EXISTS public.supplier_requests
 CREATE INDEX IF NOT EXISTS idx_supplier_requests_supplier
     ON public.supplier_requests(supplier_id);
 
+
+-- Ensure no duplicate supplier request per (order_id, supplier_id)
+ALTER TABLE IF EXISTS public.supplier_requests
+    ADD CONSTRAINT uq_supplier_requests_order_supplier UNIQUE (order_id, supplier_id);
+
+-- Ensure no duplicate detail per (request_id, ingredient_id)
+ALTER TABLE IF EXISTS public.supplier_request_details
+    ADD CONSTRAINT uq_supplier_request_details_req_ing UNIQUE (request_id, ingredient_id);
+
 END;
