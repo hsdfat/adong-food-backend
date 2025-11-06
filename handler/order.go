@@ -508,6 +508,44 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found: " + ing.IngredientID})
 			return
 		}
+
+		// Validate supplier has quotation for this ingredient in supplier_price_list
+		// Only accept if active and within effective date range (or dates are null)
+		var price models.SupplierPrice
+		now := time.Now()
+		err := store.DB.GormClient.Where(
+			"supplier_id = ? AND ingredient_id = ? AND (active IS TRUE OR active IS NULL) AND (effective_from IS NULL OR effective_from <= ?) AND (effective_to IS NULL OR effective_to >= ?)",
+			request.SupplierID, ing.IngredientID, now, now,
+		).First(&price).Error
+		if err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier missing quotation", "supplier_id", request.SupplierID, "ingredient_id", ing.IngredientID, "error", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Supplier does not have a valid quotation for ingredient: " + ing.IngredientID})
+			return
+		}
+
+		// Validate ingredient belongs to the specified order (either in order_ingredients or order_supplementary_foods)
+		var presentCount int64
+		presentSQL := `
+			SELECT COUNT(*) AS cnt FROM (
+				SELECT 1
+				FROM order_details od
+				JOIN order_ingredients oi ON oi.order_detail_id = od.order_detail_id
+				WHERE od.order_id = ? AND oi.ingredient_id = ?
+				UNION ALL
+				SELECT 1
+				FROM order_supplementary_foods osf
+				WHERE osf.order_id = ? AND osf.ingredient_id = ?
+			) x`
+		if err := store.DB.GormClient.Raw(presentSQL, orderID, ing.IngredientID, orderID, ing.IngredientID).Scan(&presentCount).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier validate ingredient in order error", "order_id", orderID, "ingredient_id", ing.IngredientID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if presentCount == 0 {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not in order", "order_id", orderID, "ingredient_id", ing.IngredientID)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ingredient does not belong to the order: " + ing.IngredientID})
+			return
+		}
 	}
 
 	// Start transaction

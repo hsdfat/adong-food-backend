@@ -114,7 +114,7 @@ type SupplierRequestDetail struct {
 	Quantity        float64   `gorm:"column:quantity;type:numeric(15,4);not null" json:"quantity"`
 	Unit            string    `gorm:"column:unit;not null" json:"unit"`
 	UnitPrice       float64   `gorm:"column:unit_price;type:numeric(15,2);not null" json:"unitPrice"`
-	TotalPrice      float64   `gorm:"column:total_price;type:numeric(15,2)" json:"totalPrice"`
+	TotalPrice      float64   `gorm:"column:total_price;type:numeric(15,2);->" json:"totalPrice"`
 	CreatedDate     time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
 	ModifiedDate    time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 

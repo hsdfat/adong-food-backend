@@ -1242,6 +1242,174 @@
 					"response": []
 				},
 				{
+					"name": "Get Supplier Requests By Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/supplier-requests",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"supplier-requests"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier Request Details By Ingredient In Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/supplier-requests/ingredient/:ingredientId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"supplier-requests",
+								"ingredient",
+								":ingredientId"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								},
+								{
+									"key": "ingredientId",
+									"value": "ING001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Save Order Ingredients With Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"supplierId\": \"SUP001\",\n  \"ingredients\": [\n    {\n      \"ingredientId\": \"ING001\",\n      \"quantity\": 3.6,\n      \"unit\": \"kg\",\n      \"unitPrice\": 25000\n    },\n    {\n      \"ingredientId\": \"ING002\",\n      \"quantity\": 2.4,\n      \"unit\": \"kg\",\n      \"unitPrice\": 18000\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/supplier-ingredients",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"supplier-ingredients"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Supplier Request (alias)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"supplierId\": \"SUP001\",\n  \"ingredients\": [\n    {\n      \"ingredientId\": \"ING001\",\n      \"quantity\": 3.6,\n      \"unit\": \"kg\",\n      \"unitPrice\": 25000\n    },\n    {\n      \"ingredientId\": \"ING002\",\n      \"quantity\": 2.4,\n      \"unit\": \"kg\",\n      \"unitPrice\": 18000\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/supplier-requests",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"supplier-requests"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Get Order by ID",
 					"request": {
 						"auth": {
