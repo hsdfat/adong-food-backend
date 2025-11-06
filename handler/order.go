@@ -240,6 +240,22 @@ func CreateOrder(c *gin.Context) {
 		for j := range ingredients {
 			ingredients[j].OrderDetailID = details[i].OrderDetailID
 			ingredients[j].OrderIngredientID = 0 // Ensure auto-increment
+
+			// Calculate quantity if it's 0 or missing (similar to how summary queries work)
+			if ingredients[j].Quantity <= 0 {
+				if ingredients[j].StandardPerPortion > 0 && details[i].Portions > 0 {
+					ingredients[j].Quantity = ingredients[j].StandardPerPortion * float64(details[i].Portions)
+				} else {
+					// If quantity can't be calculated and is 0, skip this ingredient
+					logger.Log.Warn("CreateOrder skipping ingredient with invalid quantity",
+						"ingredient_id", ingredients[j].IngredientID,
+						"quantity", ingredients[j].Quantity,
+						"standard_per_portion", ingredients[j].StandardPerPortion,
+						"portions", details[i].Portions)
+					continue
+				}
+			}
+
 			if err := tx.Create(&ingredients[j]).Error; err != nil {
 				logger.Log.Error("CreateOrder create ingredient error", "error", err)
 				tx.Rollback()
@@ -253,6 +269,22 @@ func CreateOrder(c *gin.Context) {
 	for i := range supplementaryFoods {
 		supplementaryFoods[i].OrderID = order.OrderID
 		supplementaryFoods[i].SupplementaryID = 0 // Ensure auto-increment
+
+		// Calculate quantity if it's 0 or missing (similar to how summary queries work)
+		if supplementaryFoods[i].Quantity <= 0 {
+			if supplementaryFoods[i].StandardPerPortion > 0 && supplementaryFoods[i].Portions > 0 {
+				supplementaryFoods[i].Quantity = supplementaryFoods[i].StandardPerPortion * float64(supplementaryFoods[i].Portions)
+			} else {
+				// If quantity can't be calculated and is 0, skip this supplementary food
+				logger.Log.Warn("CreateOrder skipping supplementary food with invalid quantity",
+					"ingredient_id", supplementaryFoods[i].IngredientID,
+					"quantity", supplementaryFoods[i].Quantity,
+					"standard_per_portion", supplementaryFoods[i].StandardPerPortion,
+					"portions", supplementaryFoods[i].Portions)
+				continue
+			}
+		}
+
 		if err := tx.Create(&supplementaryFoods[i]).Error; err != nil {
 			logger.Log.Error("CreateOrder create supplementary error", "error", err)
 			tx.Rollback()
@@ -427,6 +459,141 @@ func GetOrderIngredientSummary(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// SaveOrderIngredientsWithSupplier - Save ingredients with selected supplier for an order
+func SaveOrderIngredientsWithSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	orderID := c.Param("id")
+	logger.Log.Info("SaveOrderIngredientsWithSupplier called", "order_id", orderID, "user_id", uid)
+
+	// Define request structure
+	var request struct {
+		SupplierID  string `json:"supplierId" binding:"required"`
+		Ingredients []struct {
+			IngredientID string  `json:"ingredientId" binding:"required"`
+			Quantity     float64 `json:"quantity" binding:"required,gt=0"`
+			Unit         string  `json:"unit" binding:"required"`
+			UnitPrice    float64 `json:"unitPrice" binding:"required,gte=0"`
+		} `json:"ingredients" binding:"required,min=1"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate order exists
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier order not found", "order_id", orderID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	// Validate supplier exists
+	var supplier models.Supplier
+	if err := store.DB.GormClient.First(&supplier, "supplier_id = ?", request.SupplierID).Error; err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier supplier not found", "supplier_id", request.SupplierID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
+		return
+	}
+
+	// Validate ingredients exist
+	for _, ing := range request.Ingredients {
+		var ingredient models.Ingredient
+		if err := store.DB.GormClient.First(&ingredient, "ingredient_id = ?", ing.IngredientID).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not found", "ingredient_id", ing.IngredientID, "error", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found: " + ing.IngredientID})
+			return
+		}
+	}
+
+	// Start transaction
+	tx := store.DB.GormClient.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Find or create SupplierRequest for this order + supplier
+	var supplierRequest models.SupplierRequest
+	err := tx.Where("order_id = ? AND supplier_id = ?", orderID, request.SupplierID).First(&supplierRequest).Error
+	if err != nil {
+		// Create new supplier request
+		supplierRequest = models.SupplierRequest{
+			OrderID:    orderID,
+			SupplierID: request.SupplierID,
+			Status:     "Pending",
+		}
+		if err := tx.Create(&supplierRequest).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier create request error", "error", err)
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		logger.Log.Info("SaveOrderIngredientsWithSupplier created new supplier request", "request_id", supplierRequest.RequestID)
+	} else {
+		// Update status if needed (keep existing status if not explicitly set)
+		logger.Log.Info("SaveOrderIngredientsWithSupplier found existing supplier request", "request_id", supplierRequest.RequestID)
+	}
+
+	// Delete existing request details for this request
+	if err := tx.Where("request_id = ?", supplierRequest.RequestID).Delete(&models.SupplierRequestDetail{}).Error; err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier delete existing details error", "error", err)
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create new request details
+	for _, ing := range request.Ingredients {
+		detail := models.SupplierRequestDetail{
+			RequestID:    supplierRequest.RequestID,
+			IngredientID: ing.IngredientID,
+			Quantity:     ing.Quantity,
+			Unit:         ing.Unit,
+			UnitPrice:    ing.UnitPrice,
+			// TotalPrice is a generated column in the database (quantity * unit_price)
+		}
+
+		if err := tx.Create(&detail).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier create detail error", "error", err, "ingredient_id", ing.IngredientID)
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier commit error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload supplier request with relations
+	if err := store.DB.GormClient.
+		Preload("Order").
+		Preload("Supplier").
+		Preload("Details.Ingredient").
+		First(&supplierRequest, "request_id = ?", supplierRequest.RequestID).Error; err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier reload error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return success response
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "Ingredients saved with supplier successfully",
+		"requestId":    supplierRequest.RequestID,
+		"orderId":      supplierRequest.OrderID,
+		"supplierId":   supplierRequest.SupplierID,
+		"status":       supplierRequest.Status,
+		"detailsCount": len(supplierRequest.Details),
+	})
 }
 
 // convertOrderToDTO maps model to DTO

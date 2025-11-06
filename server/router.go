@@ -172,6 +172,7 @@ func SetupRouter() *gin.Engine {
 		api.GET("/orders/:id/ingredients/summary", handler.GetOrderIngredientsSummary)
 		api.GET("/orders/:id/ingredients/:ingredientId/summary", handler.GetOrderIngredientSummary)
 		api.POST("/orders", handler.CreateOrder)
+		api.POST("/orders/:id/supplier-ingredients", handler.SaveOrderIngredientsWithSupplier)
 		api.PATCH("/orders/:id/status", handler.UpdateOrderStatus)
 		api.DELETE("/orders/:id", handler.DeleteOrder)
 
