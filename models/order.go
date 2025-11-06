@@ -5,7 +5,7 @@ import "time"
 
 // Order - Orders (orders)
 type Order struct {
-	OrderID         int       `gorm:"primaryKey;autoIncrement;column:order_id" json:"orderId"`
+	OrderID         string    `gorm:"primaryKey;column:order_id;type:varchar(50)" json:"orderId"`
 	KitchenID       string    `gorm:"column:kitchen_id;not null" json:"kitchenId"`
 	OrderDate       string    `gorm:"column:order_date;not null" json:"orderDate"`
 	Note            string    `gorm:"column:note;type:text" json:"note"`
@@ -28,7 +28,7 @@ func (Order) TableName() string {
 // OrderDetail - Order details (order_details)
 type OrderDetail struct {
 	OrderDetailID int       `gorm:"primaryKey;autoIncrement;column:order_detail_id" json:"orderDetailId"`
-	OrderID       int       `gorm:"column:order_id;not null" json:"orderId"`
+	OrderID       string    `gorm:"column:order_id;type:varchar(50);not null" json:"orderId"`
 	DishID        string    `gorm:"column:dish_id;not null" json:"dishId"`
 	Portions      int       `gorm:"column:portions;not null" json:"portions"`
 	Note          string    `gorm:"column:note;type:text" json:"note"`
@@ -68,7 +68,7 @@ func (OrderIngredient) TableName() string {
 // OrderSupplementaryFood - Extra items for an order (order_supplementary_foods)
 type OrderSupplementaryFood struct {
 	SupplementaryID    int       `gorm:"primaryKey;autoIncrement;column:supplementary_id" json:"supplementaryId"`
-	OrderID            int       `gorm:"column:order_id;not null" json:"orderId"`
+	OrderID            string    `gorm:"column:order_id;type:varchar(50);not null" json:"orderId"`
 	IngredientID       string    `gorm:"column:ingredient_id;not null" json:"ingredientId"`
 	Quantity           float64   `gorm:"column:quantity;type:numeric(15,4);not null" json:"quantity"`
 	Unit               string    `gorm:"column:unit;not null" json:"unit"`
@@ -90,7 +90,7 @@ func (OrderSupplementaryFood) TableName() string {
 // SupplierRequest - Requests sent to suppliers (supplier_requests)
 type SupplierRequest struct {
 	RequestID    int       `gorm:"primaryKey;autoIncrement;column:request_id" json:"requestId"`
-	OrderID      int       `gorm:"column:order_id;not null" json:"orderId"`
+	OrderID      string    `gorm:"column:order_id;type:varchar(50);not null" json:"orderId"`
 	SupplierID   string    `gorm:"column:supplier_id;not null" json:"supplierId"`
 	Status       string    `gorm:"column:status;default:Pending;not null" json:"status"`
 	CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`

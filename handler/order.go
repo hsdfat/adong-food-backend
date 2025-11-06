@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // GetOrders lists orders with filters: kitchen_id, status, date range, dish_id, ingredient_id
@@ -37,42 +38,80 @@ func GetOrders(c *gin.Context) {
 	dishID := c.Query("dish_id")
 	ingredientID := c.Query("ingredient_id")
 
+	// Get user role to check if user is Admin
+	var userRole string
+	if identity, ok := c.Get("identity"); ok {
+		if userID, ok2 := identity.(string); ok2 {
+			var user models.User
+			if err := store.DB.GormClient.Select("role").First(&user, "user_id = ?", userID).Error; err == nil {
+				userRole = user.Role
+			}
+		}
+	}
+
 	var total int64
 	var orders []models.Order
 
-	db := store.DB.GormClient.Model(&models.Order{})
+	// Use separate queries for counting and data to avoid DISTINCT affecting selected columns
+	dataDB := store.DB.GormClient.Model(&models.Order{})
+	countDB := store.DB.GormClient.Model(&models.Order{})
+
+	// Filter by created_by_user_id if user is not Admin
+	if userRole != "Admin" {
+		if identity, ok := c.Get("identity"); ok {
+			if userID, ok2 := identity.(string); ok2 {
+				dataDB = dataDB.Where("created_by_user_id = ?", userID)
+				countDB = countDB.Where("created_by_user_id = ?", userID)
+			}
+		}
+	}
 
 	// Filters
 	if params.Search != "" {
-		db = db.Where("note ILIKE ? OR CAST(order_id AS TEXT) ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
+		dataDB = dataDB.Where("note ILIKE ? OR order_id ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
+		countDB = countDB.Where("note ILIKE ? OR order_id ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 	if kitchenID != "" {
-		db = db.Where("kitchen_id = ?", kitchenID)
+		dataDB = dataDB.Where("kitchen_id = ?", kitchenID)
+		countDB = countDB.Where("kitchen_id = ?", kitchenID)
 	}
 	if status != "" {
-		db = db.Where("status = ?", status)
+		dataDB = dataDB.Where("status = ?", status)
+		countDB = countDB.Where("status = ?", status)
 	}
 	if fromDate != "" {
-		db = db.Where("order_date >= ?", fromDate)
+		if t, err := time.Parse("2006-01-02", fromDate); err == nil {
+			dataDB = dataDB.Where("order_date >= ?", t)
+			countDB = countDB.Where("order_date >= ?", t)
+		} else {
+			dataDB = dataDB.Where("order_date >= ?", fromDate)
+			countDB = countDB.Where("order_date >= ?", fromDate)
+		}
 	}
 	if toDate != "" {
 		if t, err := time.Parse("2006-01-02", toDate); err == nil {
-			db = db.Where("order_date < ?", t.Add(24*time.Hour))
+			dataDB = dataDB.Where("order_date < ?", t.Add(24*time.Hour))
+			countDB = countDB.Where("order_date < ?", t.Add(24*time.Hour))
 		} else {
-			db = db.Where("order_date <= ?", toDate)
+			dataDB = dataDB.Where("order_date <= ?", toDate)
+			countDB = countDB.Where("order_date <= ?", toDate)
 		}
 	}
 	if dishID != "" {
-		db = db.Joins("JOIN order_details od ON od.order_id = orders.order_id").Where("od.dish_id = ?", dishID)
+		dataDB = dataDB.Joins("JOIN order_details od ON od.order_id = orders.order_id").Where("od.dish_id = ?", dishID)
+		countDB = countDB.Joins("JOIN order_details od ON od.order_id = orders.order_id").Where("od.dish_id = ?", dishID)
 	}
 	if ingredientID != "" {
-		db = db.Joins("JOIN order_details od2 ON od2.order_id = orders.order_id").
+		dataDB = dataDB.Joins("JOIN order_details od2 ON od2.order_id = orders.order_id").
+			Joins("JOIN order_ingredients oi ON oi.order_detail_id = od2.order_detail_id").
+			Where("oi.ingredient_id = ?", ingredientID)
+		countDB = countDB.Joins("JOIN order_details od2 ON od2.order_id = orders.order_id").
 			Joins("JOIN order_ingredients oi ON oi.order_detail_id = od2.order_detail_id").
 			Where("oi.ingredient_id = ?", ingredientID)
 	}
 
 	// Count distinct orders
-	if err := db.Distinct("orders.order_id").Count(&total).Error; err != nil {
+	if err := countDB.Distinct("orders.order_id").Count(&total).Error; err != nil {
 		logger.Log.Error("GetOrders count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -85,13 +124,19 @@ func GetOrders(c *gin.Context) {
 		"status":       "orders.status",
 		"created_date": "orders.created_date",
 	}
-	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSort)
+	dataDB = utils.ApplySort(dataDB, params.SortBy, params.SortDir, allowedSort)
 
 	// Pagination
-	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+	dataDB = utils.ApplyPagination(dataDB, params.Page, params.PageSize)
 
-	// Fetch and preload minimal relations
-	if err := db.Preload("Kitchen").Preload("CreatedBy").Find(&orders).Error; err != nil {
+	// Fetch and preload relations for DTO
+	if err := dataDB.Select("orders.*").
+		Preload("Kitchen").
+		Preload("CreatedBy").
+		Preload("Details.Dish").
+		Preload("Details.Ingredients.Ingredient").
+		Preload("SupplementaryFoods.Ingredient").
+		Find(&orders).Error; err != nil {
 		logger.Log.Error("GetOrders query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -100,7 +145,7 @@ func GetOrders(c *gin.Context) {
 	// Map to DTOs
 	dtos := make([]models.OrderDTO, len(orders))
 	for i := range orders {
-		dtos[i] = convertOrderToDTO(&orders[i], false)
+		dtos[i] = convertOrderToDTO(&orders[i], true)
 	}
 
 	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
@@ -140,10 +185,17 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	if identity, ok := c.Get("userID"); ok {
+	// Get user ID from authentication middleware
+	if identity, ok := c.Get("identity"); ok {
 		if v, ok2 := identity.(string); ok2 {
 			order.CreatedByUserID = v
 		}
+	}
+
+	// Auto-generate OrderID if not provided
+	if order.OrderID == "" {
+		order.OrderID = uuid.New().String()
+		logger.Log.Info("CreateOrder auto-generated OrderID", "orderId", order.OrderID)
 	}
 
 	tx := store.DB.GormClient.Begin()
@@ -153,6 +205,13 @@ func CreateOrder(c *gin.Context) {
 		}
 	}()
 
+	// Store details and supplementary foods temporarily to avoid GORM auto-saving them
+	details := order.Details
+	supplementaryFoods := order.SupplementaryFoods
+	order.Details = nil
+	order.SupplementaryFoods = nil
+
+	// Create order without details/supplementary foods
 	if err := tx.Create(&order).Error; err != nil {
 		logger.Log.Error("CreateOrder create header error", "error", err)
 		tx.Rollback()
@@ -161,19 +220,27 @@ func CreateOrder(c *gin.Context) {
 	}
 
 	// Create details and nested ingredients
-	for i := range order.Details {
-		order.Details[i].OrderID = order.OrderID
-		logger.Log.Info("Creating ingredient", "orderDetailID", order.Details[i].OrderDetailID)
-		order.Details[i].OrderDetailID = 0 // Ensure auto-increment
-		if err := tx.Create(&order.Details[i]).Error; err != nil {
+	for i := range details {
+		details[i].OrderID = order.OrderID
+		details[i].OrderDetailID = 0 // Ensure auto-increment
+
+		// Store ingredients temporarily to avoid GORM auto-saving them
+		ingredients := details[i].Ingredients
+		details[i].Ingredients = nil
+
+		// Create order detail without ingredients
+		if err := tx.Create(&details[i]).Error; err != nil {
 			logger.Log.Error("CreateOrder create detail error", "error", err)
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		for j := range order.Details[i].Ingredients {
-			order.Details[i].Ingredients[j].OrderDetailID = order.Details[i].OrderDetailID
-			if err := tx.Create(&order.Details[i].Ingredients[j]).Error; err != nil {
+
+		// Create ingredients manually after order detail is created
+		for j := range ingredients {
+			ingredients[j].OrderDetailID = details[i].OrderDetailID
+			ingredients[j].OrderIngredientID = 0 // Ensure auto-increment
+			if err := tx.Create(&ingredients[j]).Error; err != nil {
 				logger.Log.Error("CreateOrder create ingredient error", "error", err)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -183,9 +250,10 @@ func CreateOrder(c *gin.Context) {
 	}
 
 	// Create supplementary foods
-	for i := range order.SupplementaryFoods {
-		order.SupplementaryFoods[i].OrderID = order.OrderID
-		if err := tx.Create(&order.SupplementaryFoods[i]).Error; err != nil {
+	for i := range supplementaryFoods {
+		supplementaryFoods[i].OrderID = order.OrderID
+		supplementaryFoods[i].SupplementaryID = 0 // Ensure auto-increment
+		if err := tx.Create(&supplementaryFoods[i]).Error; err != nil {
 			logger.Log.Error("CreateOrder create supplementary error", "error", err)
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -212,6 +280,55 @@ func CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusCreated, dto)
 }
 
+// UpdateOrderStatus updates only the status of an order (PATCH method)
+func UpdateOrderStatus(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("UpdateOrderStatus called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+
+	// Check if order exists
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateOrderStatus not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	// Define a struct to accept only status field
+	var updateData struct {
+		Status string `json:"status" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		logger.Log.Error("UpdateOrderStatus bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update only the status field
+	if err := store.DB.GormClient.Model(&order).Update("status", updateData.Status).Error; err != nil {
+		logger.Log.Error("UpdateOrderStatus db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload with relations
+	if err := store.DB.GormClient.
+		Preload("Kitchen").
+		Preload("CreatedBy").
+		Preload("Details.Dish").
+		Preload("Details.Ingredients.Ingredient").
+		Preload("SupplementaryFoods.Ingredient").
+		First(&order, "order_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateOrderStatus reload error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	dto := convertOrderToDTO(&order, true)
+	c.JSON(http.StatusOK, dto)
+}
+
 // DeleteOrder deletes an order by id (cascade removes children)
 func DeleteOrder(c *gin.Context) {
 	uid, _ := c.Get("identity")
@@ -223,6 +340,93 @@ func DeleteOrder(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Order deleted successfully"})
+}
+
+// IngredientTotal represents total usage per ingredient for an order
+type IngredientTotal struct {
+	IngredientID   string  `json:"ingredientId"`
+	IngredientName string  `json:"ingredientName"`
+	Unit           string  `json:"unit"`
+	TotalQuantity  float64 `json:"totalQuantity"`
+}
+
+// GetOrderIngredientsSummary returns totals of ingredients for an order (details + supplementary)
+func GetOrderIngredientsSummary(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetOrderIngredientsSummary called", "order_id", c.Param("id"), "user_id", uid)
+	orderID := c.Param("id")
+
+	var results []IngredientTotal
+	sql := `
+        SELECT x.ingredient_id AS ingredient_id,
+               COALESCE(mi.ingredient_name, '') AS ingredient_name,
+               x.unit AS unit,
+               COALESCE(SUM(x.total_qty)::double precision, 0) AS total_quantity
+        FROM (
+            SELECT oi.ingredient_id,
+                   oi.unit,
+                   COALESCE(oi.quantity, oi.standard_per_portion * od.portions) AS total_qty
+            FROM order_ingredients oi
+            JOIN order_details od ON od.order_detail_id = oi.order_detail_id
+            WHERE od.order_id = ?
+            UNION ALL
+            SELECT osf.ingredient_id,
+                   osf.unit,
+                   COALESCE(osf.quantity, osf.standard_per_portion * osf.portions) AS total_qty
+            FROM order_supplementary_foods osf
+            WHERE osf.order_id = ?
+        ) x
+        LEFT JOIN master_ingredients mi ON mi.ingredient_id = x.ingredient_id
+        GROUP BY x.ingredient_id, mi.ingredient_name, x.unit
+        ORDER BY mi.ingredient_name`
+
+	if err := store.DB.GormClient.Raw(sql, orderID, orderID).Scan(&results).Error; err != nil {
+		logger.Log.Error("GetOrderIngredientsSummary db error", "order_id", orderID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
+// GetOrderIngredientSummary returns total for a specific ingredient in an order
+func GetOrderIngredientSummary(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetOrderIngredientSummary called", "order_id", c.Param("id"), "ingredient_id", c.Param("ingredientId"), "user_id", uid)
+	orderID := c.Param("id")
+	ingredientID := c.Param("ingredientId")
+
+	var result IngredientTotal
+	sql := `
+        SELECT x.ingredient_id AS ingredient_id,
+               COALESCE(mi.ingredient_name, '') AS ingredient_name,
+               x.unit AS unit,
+               COALESCE(SUM(x.total_qty)::double precision, 0) AS total_quantity
+        FROM (
+            SELECT oi.ingredient_id,
+                   oi.unit,
+                   COALESCE(oi.quantity, oi.standard_per_portion * od.portions) AS total_qty
+            FROM order_ingredients oi
+            JOIN order_details od ON od.order_detail_id = oi.order_detail_id
+            WHERE od.order_id = ? AND oi.ingredient_id = ?
+            UNION ALL
+            SELECT osf.ingredient_id,
+                   osf.unit,
+                   COALESCE(osf.quantity, osf.standard_per_portion * osf.portions) AS total_qty
+            FROM order_supplementary_foods osf
+            WHERE osf.order_id = ? AND osf.ingredient_id = ?
+        ) x
+        LEFT JOIN master_ingredients mi ON mi.ingredient_id = x.ingredient_id
+        GROUP BY x.ingredient_id, mi.ingredient_name, x.unit
+        ORDER BY mi.ingredient_name`
+
+	if err := store.DB.GormClient.Raw(sql, orderID, ingredientID, orderID, ingredientID).Scan(&result).Error; err != nil {
+		logger.Log.Error("GetOrderIngredientSummary db error", "order_id", orderID, "ingredient_id", ingredientID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // convertOrderToDTO maps model to DTO

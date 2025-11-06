@@ -9,8 +9,8 @@ type Supplier struct {
     ZaloLink     string    `gorm:"column:zalo_link;type:text" json:"zaloLink"`
     Address      string    `gorm:"column:address;type:text" json:"address"`
     Phone        string    `gorm:"column:phone" json:"phone"`
-    Email        string    `gorm:"column:email" json:"email"`
-    Active       *bool     `gorm:"column:active;default:true" json:"active"`
+	Email        string    `gorm:"column:email" json:"email"`
+	Active       *bool     `gorm:"column:active;default:true" json:"active"`
     CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
     ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 }

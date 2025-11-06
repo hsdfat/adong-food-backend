@@ -8,7 +8,7 @@ type Kitchen struct {
     KitchenName  string    `gorm:"column:kitchen_name;not null" json:"kitchenName"`
     Address      string    `gorm:"column:address;type:text" json:"address"`
     Phone        string    `gorm:"column:phone" json:"phone"`
-    Active       *bool     `gorm:"column:active;default:true" json:"active"`
+	Active       *bool     `gorm:"column:active;default:true" json:"active"`
     CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
     ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 }

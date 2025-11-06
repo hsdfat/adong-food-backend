@@ -9,7 +9,7 @@ type Dish struct {
     CookingMethod string    `gorm:"column:cooking_method" json:"cookingMethod"`
     Group         string    `gorm:"column:category" json:"group"`
     Description   string    `gorm:"column:description;type:text" json:"description"`
-    Active        *bool     `gorm:"column:active;default:true" json:"active"`
+	Active        *bool     `gorm:"column:active;default:true" json:"active"`
     CreatedDate   time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
     ModifiedDate  time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 }

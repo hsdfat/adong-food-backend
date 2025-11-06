@@ -70,7 +70,7 @@ func SetupRouter() *gin.Engine {
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -169,7 +169,10 @@ func SetupRouter() *gin.Engine {
 		// Order forms
 		api.GET("/orders", handler.GetOrders)
 		api.GET("/orders/:id", handler.GetOrder)
+		api.GET("/orders/:id/ingredients/summary", handler.GetOrderIngredientsSummary)
+		api.GET("/orders/:id/ingredients/:ingredientId/summary", handler.GetOrderIngredientSummary)
 		api.POST("/orders", handler.CreateOrder)
+		api.PATCH("/orders/:id/status", handler.UpdateOrderStatus)
 		api.DELETE("/orders/:id", handler.DeleteOrder)
 
 		// // Order details

@@ -5,7 +5,6 @@ import (
 	"adong-be/models"
 	"adong-be/store"
 	"adong-be/utils"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -39,7 +38,8 @@ func GetSupplierPrices(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.SupplierPrice{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"product_name", "ingredient_id", "supplier_id", "classification"},
+		Fields: []string{"product_name", "ingredient_id", "supplier_id",
+		 "classification", "specification", "manufacturer_name"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -47,7 +47,6 @@ func GetSupplierPrices(c *gin.Context) {
 	// Apply date range filters for counting
 	countDB = applyDateRangeFilter(countDB, effectiveFrom, effectiveTo)
 
-	fmt.Println(params.Search)
 	if err := countDB.Count(&total).Error; err != nil {
 		logger.Log.Error("GetSupplierPrices count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -137,7 +136,7 @@ func applyDateRangeFilter(db *gorm.DB, effectiveFrom, effectiveTo string) *gorm.
 			// - End date is within range, OR
 			// - The price period encompasses the entire search range
 			db = db.Where(
-				"hieuluctu >= ? AND hieulucden <= ?",
+				"(effective_from IS NULL OR effective_to IS NULL) OR (effective_from >= ? AND effective_to <= ?)",
 				fromDate, toDate,
 			)
 		}

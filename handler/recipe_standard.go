@@ -32,7 +32,7 @@ func GetRecipeStandards(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.RecipeStandard{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"monanid", "nguyenlieuid"},
+		Fields: []string{"dish_id", "ingredient_id"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -48,10 +48,10 @@ func GetRecipeStandards(c *gin.Context) {
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"dinhmucid":    "dinhmucid",
-		"monanid":      "moananid",
-		"nguyenlieuid": "nguyenlieuid",
-		"dinhmuc":      "dinhmuc1suat",
+		"standardId":   "recipe_id",
+		"dishId":       "dish_id",
+		"ingredientId": "ingredient_id",
+		"standardPer1": "quantity_per_serving",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
@@ -85,7 +85,7 @@ func GetRecipeStandard(c *gin.Context) {
 		Preload("Dish").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
-		First(&recipe, "dinhmucid = ?", id).Error; err != nil {
+		First(&recipe, "recipe_id = ?", id).Error; err != nil {
 		logger.Log.Error("GetRecipeStandard not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe standard not found"})
 		return
@@ -115,7 +115,7 @@ func CreateRecipeStandard(c *gin.Context) {
 		Preload("Dish").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
-		First(&recipe, "dinhmucid = ?", recipe.StandardID)
+		First(&recipe, "recipe_id = ?", recipe.StandardID)
 
 	// Return DTO
 	dto := recipe.ToDTO()
@@ -126,7 +126,7 @@ func UpdateRecipeStandard(c *gin.Context) {
 	logger.Log.Info("UpdateRecipeStandard called", "id", c.Param("id"))
 	id := c.Param("id")
 	var recipe models.RecipeStandard
-	if err := store.DB.GormClient.First(&recipe, "dinhmucid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.First(&recipe, "recipe_id = ?", id).Error; err != nil {
 		logger.Log.Error("UpdateRecipeStandard not found", "id", id, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe standard not found"})
 		return
@@ -147,7 +147,7 @@ func UpdateRecipeStandard(c *gin.Context) {
 		Preload("Dish").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
-		First(&recipe, "dinhmucid = ?", recipe.StandardID)
+		First(&recipe, "recipe_id = ?", recipe.StandardID)
 
 	// Return DTO
 	dto := recipe.ToDTO()
@@ -157,7 +157,7 @@ func UpdateRecipeStandard(c *gin.Context) {
 func DeleteRecipeStandard(c *gin.Context) {
 	logger.Log.Info("DeleteRecipeStandard called", "id", c.Param("id"))
 	id := c.Param("id")
-	if err := store.DB.GormClient.Delete(&models.RecipeStandard{}, "dinhmucid = ?", id).Error; err != nil {
+	if err := store.DB.GormClient.Delete(&models.RecipeStandard{}, "recipe_id = ?", id).Error; err != nil {
 		logger.Log.Error("DeleteRecipeStandard db error", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -185,10 +185,10 @@ func GetRecipeStandardsByDish(c *gin.Context) {
 	)
 
 	var total int64
-	countDB := store.DB.GormClient.Model(&models.RecipeStandard{}).Where("monanid = ?", dishId)
+	countDB := store.DB.GormClient.Model(&models.RecipeStandard{}).Where("dish_id = ?", dishId)
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"nguyenlieuid"},
+		Fields: []string{"ingredient_id"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -200,12 +200,12 @@ func GetRecipeStandardsByDish(c *gin.Context) {
 	}
 
 	var recipes []models.RecipeStandard
-	db := store.DB.GormClient.Model(&models.RecipeStandard{}).Where("monanid = ?", dishId)
+	db := store.DB.GormClient.Model(&models.RecipeStandard{}).Where("dish_id = ?", dishId)
 	db = utils.ApplySearch(db, params.Search, searchConfig)
 
 	allowedSortFields := map[string]string{
-		"nguyenlieuid": "nguyenlieuid",
-		"dinhmuc":      "dinhmuc1suat",
+		"ingredientId": "ingredient_id",
+		"standardPer1": "quantity_per_serving",
 	}
 	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)

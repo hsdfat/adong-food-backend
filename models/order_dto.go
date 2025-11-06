@@ -4,7 +4,7 @@ import "time"
 
 // OrderDTO - Aggregated response for an order
 type OrderDTO struct {
-	OrderID         int                     `json:"orderId"`
+	OrderID         string                  `json:"orderId"`
 	KitchenID       string                  `json:"kitchenId"`
 	KitchenName     string                  `json:"kitchenName"`
 	OrderDate       string                  `json:"orderDate"`
