@@ -464,21 +464,32 @@ func GetOrderIngredientSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// SaveOrderIngredientsWithSupplier - Save ingredients with selected supplier for an order
+// SaveOrderIngredientsWithSupplier - Save selected suppliers for ingredients in an order
+// This saves (order_id, ingredient_id) pairs with selected supplier/product information
 func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	orderID := c.Param("id")
 	logger.Log.Info("SaveOrderIngredientsWithSupplier called", "order_id", orderID, "user_id", uid)
 
-	// Define request structure
+	// Get user ID from authentication middleware
+	var userID string
+	if identity, ok := c.Get("identity"); ok {
+		if v, ok2 := identity.(string); ok2 {
+			userID = v
+		}
+	}
+
+	// Define request structure - list of ingredient selections
 	var request struct {
-		SupplierID  string `json:"supplierId" binding:"required"`
-		Ingredients []struct {
-			IngredientID string  `json:"ingredientId" binding:"required"`
-			Quantity     float64 `json:"quantity" binding:"required,gt=0"`
-			Unit         string  `json:"unit" binding:"required"`
-			UnitPrice    float64 `json:"unitPrice" binding:"required,gte=0"`
-		} `json:"ingredients" binding:"required,min=1"`
+		Selections []struct {
+			IngredientID       string  `json:"ingredientId" binding:"required"`
+			SelectedSupplierID string  `json:"selectedSupplierId" binding:"required"`
+			SelectedProductID int     `json:"selectedProductId" binding:"required"`
+			Quantity           float64 `json:"quantity" binding:"required,gt=0"`
+			Unit               string  `json:"unit" binding:"required"`
+			UnitPrice          float64 `json:"unitPrice" binding:"required,gte=0"`
+			Notes              string  `json:"notes"`
+		} `json:"selections" binding:"required,min=1"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -495,34 +506,34 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		return
 	}
 
-	// Validate supplier exists
-	var supplier models.Supplier
-	if err := store.DB.GormClient.First(&supplier, "supplier_id = ?", request.SupplierID).Error; err != nil {
-		logger.Log.Error("SaveOrderIngredientsWithSupplier supplier not found", "supplier_id", request.SupplierID, "error", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
-		return
-	}
-
-	// Validate ingredients exist
-	for _, ing := range request.Ingredients {
+	// Validate all selections before processing
+	for i, sel := range request.Selections {
+		// Validate ingredient exists
 		var ingredient models.Ingredient
-		if err := store.DB.GormClient.First(&ingredient, "ingredient_id = ?", ing.IngredientID).Error; err != nil {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not found", "ingredient_id", ing.IngredientID, "error", err)
-			c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found: " + ing.IngredientID})
+		if err := store.DB.GormClient.First(&ingredient, "ingredient_id = ?", sel.IngredientID).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not found", "ingredient_id", sel.IngredientID, "error", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found: " + sel.IngredientID})
 			return
 		}
 
-		// Validate supplier has quotation for this ingredient in supplier_price_list
-		// Only accept if active and within effective date range (or dates are null)
-		var price models.SupplierPrice
-		now := time.Now()
-		err := store.DB.GormClient.Where(
-			"supplier_id = ? AND ingredient_id = ? AND (active IS TRUE OR active IS NULL) AND (effective_from IS NULL OR effective_from <= ?) AND (effective_to IS NULL OR effective_to >= ?)",
-			request.SupplierID, ing.IngredientID, now, now,
-		).First(&price).Error
-		if err != nil {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier missing quotation", "supplier_id", request.SupplierID, "ingredient_id", ing.IngredientID, "error", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Supplier does not have a valid quotation for ingredient: " + ing.IngredientID})
+		// Validate supplier exists
+		var supplier models.Supplier
+		if err := store.DB.GormClient.First(&supplier, "supplier_id = ?", sel.SelectedSupplierID).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier supplier not found", "supplier_id", sel.SelectedSupplierID, "error", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found: " + sel.SelectedSupplierID})
+			return
+		}
+
+		// Validate product exists and belongs to supplier and ingredient
+		var product models.SupplierPrice
+		if err := store.DB.GormClient.First(&product, "product_id = ? AND supplier_id = ? AND ingredient_id = ?", 
+			sel.SelectedProductID, sel.SelectedSupplierID, sel.IngredientID).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier product not found or mismatch", 
+				"product_id", sel.SelectedProductID, 
+				"supplier_id", sel.SelectedSupplierID, 
+				"ingredient_id", sel.IngredientID, 
+				"error", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Product not found or does not match supplier/ingredient"})
 			return
 		}
 
@@ -539,15 +550,27 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 				FROM order_supplementary_foods osf
 				WHERE osf.order_id = ? AND osf.ingredient_id = ?
 			) x`
-		if err := store.DB.GormClient.Raw(presentSQL, orderID, ing.IngredientID, orderID, ing.IngredientID).Scan(&presentCount).Error; err != nil {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier validate ingredient in order error", "order_id", orderID, "ingredient_id", ing.IngredientID, "error", err)
+		if err := store.DB.GormClient.Raw(presentSQL, orderID, sel.IngredientID, orderID, sel.IngredientID).Scan(&presentCount).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier validate ingredient in order error", 
+				"order_id", orderID, "ingredient_id", sel.IngredientID, "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		if presentCount == 0 {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not in order", "order_id", orderID, "ingredient_id", ing.IngredientID)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Ingredient does not belong to the order: " + ing.IngredientID})
+			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not in order", 
+				"order_id", orderID, "ingredient_id", sel.IngredientID)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ingredient does not belong to the order: " + sel.IngredientID})
 			return
+		}
+
+		// Check for duplicate ingredient_id in request
+		for j := i + 1; j < len(request.Selections); j++ {
+			if request.Selections[j].IngredientID == sel.IngredientID {
+				logger.Log.Error("SaveOrderIngredientsWithSupplier duplicate ingredient in request", 
+					"ingredient_id", sel.IngredientID)
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Duplicate ingredient_id in request: " + sel.IngredientID})
+				return
+			}
 		}
 	}
 
@@ -559,66 +582,68 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		}
 	}()
 
-	// Find or create SupplierRequest for this order + supplier
-	var supplierRequest models.SupplierRequest
-	findErr := tx.Where("order_id = ? AND supplier_id = ?", orderID, request.SupplierID).First(&supplierRequest).Error
-	if errors.Is(findErr, gorm.ErrRecordNotFound) {
-		// Create new supplier request
-		supplierRequest = models.SupplierRequest{
-			OrderID:    orderID,
-			SupplierID: request.SupplierID,
-			Status:     "Pending",
-		}
-		if err := tx.Create(&supplierRequest).Error; err != nil {
-			// In case of race causing unique violation, re-fetch existing
-			var existing models.SupplierRequest
-			refetchErr := tx.Where("order_id = ? AND supplier_id = ?", orderID, request.SupplierID).First(&existing).Error
-			if refetchErr == nil {
-				supplierRequest = existing
-				logger.Log.Info("SaveOrderIngredientsWithSupplier existing supplier request after race", "request_id", supplierRequest.RequestID)
-			} else {
-				logger.Log.Error("SaveOrderIngredientsWithSupplier create request error", "error", err)
+	// Process each selection - save or update (order_id, ingredient_id) pair
+	var savedSelections []models.OrderIngredientSupplier
+	for _, sel := range request.Selections {
+		// Calculate total cost
+		totalCost := sel.Quantity * sel.UnitPrice
+
+		// Check if selection already exists for this (order_id, ingredient_id) pair
+		var existing models.OrderIngredientSupplier
+		findErr := tx.Where("order_id = ? AND ingredient_id = ?", orderID, sel.IngredientID).First(&existing).Error
+
+		if errors.Is(findErr, gorm.ErrRecordNotFound) {
+			// Create new selection
+			newSelection := models.OrderIngredientSupplier{
+				OrderID:           orderID,
+				IngredientID:      sel.IngredientID,
+				SelectedSupplierID: sel.SelectedSupplierID,
+				SelectedProductID: sel.SelectedProductID,
+				Quantity:          sel.Quantity,
+				Unit:              sel.Unit,
+				UnitPrice:         sel.UnitPrice,
+				TotalCost:         totalCost,
+				SelectedByUserID:  userID,
+				Notes:             sel.Notes,
+			}
+
+			if err := tx.Create(&newSelection).Error; err != nil {
+				logger.Log.Error("SaveOrderIngredientsWithSupplier create selection error", 
+					"error", err, "ingredient_id", sel.IngredientID)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
-		} else {
-			logger.Log.Info("SaveOrderIngredientsWithSupplier created new supplier request", "request_id", supplierRequest.RequestID)
-		}
-	} else if findErr != nil {
-		logger.Log.Error("SaveOrderIngredientsWithSupplier find request error", "error", findErr)
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": findErr.Error()})
-		return
-	} else {
-		// Update status if needed (keep existing status if not explicitly set)
-		logger.Log.Info("SaveOrderIngredientsWithSupplier found existing supplier request", "request_id", supplierRequest.RequestID)
-	}
-
-	// Delete existing request details for this request
-	if err := tx.Where("request_id = ?", supplierRequest.RequestID).Delete(&models.SupplierRequestDetail{}).Error; err != nil {
-		logger.Log.Error("SaveOrderIngredientsWithSupplier delete existing details error", "error", err)
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Create new request details
-	for _, ing := range request.Ingredients {
-		detail := models.SupplierRequestDetail{
-			RequestID:    supplierRequest.RequestID,
-			IngredientID: ing.IngredientID,
-			Quantity:     ing.Quantity,
-			Unit:         ing.Unit,
-			UnitPrice:    ing.UnitPrice,
-			// TotalPrice is a generated column in the database (quantity * unit_price)
-		}
-
-		if err := tx.Create(&detail).Error; err != nil {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier create detail error", "error", err, "ingredient_id", ing.IngredientID)
+			savedSelections = append(savedSelections, newSelection)
+			logger.Log.Info("SaveOrderIngredientsWithSupplier created new selection", 
+				"order_id", orderID, "ingredient_id", sel.IngredientID)
+		} else if findErr != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier find existing selection error", 
+				"error", findErr, "ingredient_id", sel.IngredientID)
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": findErr.Error()})
 			return
+		} else {
+			// Update existing selection
+			existing.SelectedSupplierID = sel.SelectedSupplierID
+			existing.SelectedProductID = sel.SelectedProductID
+			existing.Quantity = sel.Quantity
+			existing.Unit = sel.Unit
+			existing.UnitPrice = sel.UnitPrice
+			existing.TotalCost = totalCost
+			existing.SelectedByUserID = userID
+			existing.Notes = sel.Notes
+
+			if err := tx.Save(&existing).Error; err != nil {
+				logger.Log.Error("SaveOrderIngredientsWithSupplier update selection error", 
+					"error", err, "ingredient_id", sel.IngredientID)
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			savedSelections = append(savedSelections, existing)
+			logger.Log.Info("SaveOrderIngredientsWithSupplier updated existing selection", 
+				"order_id", orderID, "ingredient_id", sel.IngredientID)
 		}
 	}
 
@@ -629,25 +654,26 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		return
 	}
 
-	// Reload supplier request with relations
+	// Reload selections with relations for response
+	var responseSelections []models.OrderIngredientSupplier
 	if err := store.DB.GormClient.
-		Preload("Order").
-		Preload("Supplier").
-		Preload("Details.Ingredient").
-		First(&supplierRequest, "request_id = ?", supplierRequest.RequestID).Error; err != nil {
+		Preload("Ingredient").
+		Preload("SelectedSupplier").
+		Preload("SelectedProduct").
+		Preload("SelectedBy").
+		Where("order_id = ?", orderID).
+		Find(&responseSelections).Error; err != nil {
 		logger.Log.Error("SaveOrderIngredientsWithSupplier reload error", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		// Don't fail the request, just return what we saved
+		responseSelections = savedSelections
 	}
 
 	// Return success response
 	c.JSON(http.StatusOK, gin.H{
-		"message":      "Ingredients saved with supplier successfully",
-		"requestId":    supplierRequest.RequestID,
-		"orderId":      supplierRequest.OrderID,
-		"supplierId":   supplierRequest.SupplierID,
-		"status":       supplierRequest.Status,
-		"detailsCount": len(supplierRequest.Details),
+		"message":   "Supplier selections saved successfully",
+		"orderId":   orderID,
+		"selections": responseSelections,
+		"count":     len(savedSelections),
 	})
 }
 

@@ -87,42 +87,31 @@ func (OrderSupplementaryFood) TableName() string {
 	return "order_supplementary_foods"
 }
 
-// SupplierRequest - Requests sent to suppliers (supplier_requests)
-type SupplierRequest struct {
-	RequestID    int       `gorm:"primaryKey;autoIncrement;column:request_id" json:"requestId"`
-	OrderID      string    `gorm:"column:order_id;type:varchar(50);not null" json:"orderId"`
-	SupplierID   string    `gorm:"column:supplier_id;not null" json:"supplierId"`
-	Status       string    `gorm:"column:status;default:Pending;not null" json:"status"`
-	CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
-	ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+// OrderIngredientSupplier - Selected supplier for each ingredient in an order (order_ingredient_suppliers)
+type OrderIngredientSupplier struct {
+	OrderIngredientSupplierID int       `gorm:"primaryKey;autoIncrement;column:order_ingredient_supplier_id" json:"orderIngredientSupplierId"`
+	OrderID                  string    `gorm:"column:order_id;type:varchar(50);not null" json:"orderId"`
+	IngredientID             string    `gorm:"column:ingredient_id;not null" json:"ingredientId"`
+	SelectedSupplierID       string    `gorm:"column:selected_supplier_id;not null" json:"selectedSupplierId"`
+	SelectedProductID        int       `gorm:"column:selected_product_id;not null" json:"selectedProductId"`
+	Quantity                 float64   `gorm:"column:quantity;type:numeric(15,4);not null" json:"quantity"`
+	Unit                     string    `gorm:"column:unit;not null" json:"unit"`
+	UnitPrice                float64   `gorm:"column:unit_price;type:numeric(15,2);not null" json:"unitPrice"`
+	TotalCost                float64   `gorm:"column:total_cost;type:numeric(15,2);not null" json:"totalCost"`
+	SelectionDate            time.Time `gorm:"column:selection_date;default:CURRENT_TIMESTAMP" json:"selectionDate"`
+	SelectedByUserID         string    `gorm:"column:selected_by_user_id" json:"selectedByUserId"`
+	Notes                    string    `gorm:"column:notes;type:text" json:"notes"`
+	CreatedDate              time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate             time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 
 	// Relationships
-	Order    *Order                  `gorm:"foreignKey:OrderID;references:OrderID" json:"order,omitempty"`
-	Supplier *Supplier               `gorm:"foreignKey:SupplierID;references:SupplierID" json:"supplier,omitempty"`
-	Details  []SupplierRequestDetail `gorm:"foreignKey:RequestID;references:RequestID" json:"details,omitempty"`
+	Order            *Order        `gorm:"foreignKey:OrderID;references:OrderID" json:"order,omitempty"`
+	Ingredient       *Ingredient   `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
+	SelectedSupplier *Supplier     `gorm:"foreignKey:SelectedSupplierID;references:SupplierID" json:"selectedSupplier,omitempty"`
+	SelectedProduct  *SupplierPrice `gorm:"foreignKey:SelectedProductID;references:ProductID" json:"selectedProduct,omitempty"`
+	SelectedBy       *User         `gorm:"foreignKey:SelectedByUserID;references:UserID" json:"selectedBy,omitempty"`
 }
 
-func (SupplierRequest) TableName() string {
-	return "supplier_requests"
-}
-
-// SupplierRequestDetail - Line items for a supplier request (supplier_request_details)
-type SupplierRequestDetail struct {
-	RequestDetailID int       `gorm:"primaryKey;autoIncrement;column:request_detail_id" json:"requestDetailId"`
-	RequestID       int       `gorm:"column:request_id;not null" json:"requestId"`
-	IngredientID    string    `gorm:"column:ingredient_id;not null" json:"ingredientId"`
-	Quantity        float64   `gorm:"column:quantity;type:numeric(15,4);not null" json:"quantity"`
-	Unit            string    `gorm:"column:unit;not null" json:"unit"`
-	UnitPrice       float64   `gorm:"column:unit_price;type:numeric(15,2);not null" json:"unitPrice"`
-	TotalPrice      float64   `gorm:"column:total_price;type:numeric(15,2);->" json:"totalPrice"`
-	CreatedDate     time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
-	ModifiedDate    time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
-
-	// Relationships
-	Request    *SupplierRequest `gorm:"foreignKey:RequestID;references:RequestID" json:"request,omitempty"`
-	Ingredient *Ingredient      `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
-}
-
-func (SupplierRequestDetail) TableName() string {
-	return "supplier_request_details"
+func (OrderIngredientSupplier) TableName() string {
+	return "order_ingredient_suppliers"
 }
