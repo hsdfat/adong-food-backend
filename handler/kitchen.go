@@ -134,3 +134,189 @@ func DeleteKitchen(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Kitchen deleted successfully"})
 }
+
+// ============================================================================
+// Kitchen Favorite Suppliers Handlers
+// ============================================================================
+
+// GetKitchenFavoriteSuppliers returns all favorite suppliers for a kitchen
+func GetKitchenFavoriteSuppliers(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	kitchenID := c.Param("id")
+	logger.Log.Info("GetKitchenFavoriteSuppliers called", "kitchen_id", kitchenID, "user_id", uid)
+
+	// Validate kitchen exists
+	var kitchen models.Kitchen
+	if err := store.DB.GormClient.First(&kitchen, "kitchen_id = ?", kitchenID).Error; err != nil {
+		logger.Log.Error("GetKitchenFavoriteSuppliers kitchen not found", "kitchen_id", kitchenID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
+		return
+	}
+
+	var favorites []models.KitchenFavoriteSupplier
+	query := store.DB.GormClient.
+		Where("kitchen_id = ?", kitchenID).
+		Preload("Supplier").
+		Preload("CreatedBy")
+
+	// Order by display_order if set, otherwise by created_date
+	query = query.Order("COALESCE(display_order, 999999), created_date ASC")
+
+	if err := query.Find(&favorites).Error; err != nil {
+		logger.Log.Error("GetKitchenFavoriteSuppliers db error", "kitchen_id", kitchenID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, favorites)
+}
+
+// GetKitchenFavoriteSupplier returns a single favorite supplier by ID
+func GetKitchenFavoriteSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	kitchenID := c.Param("id")
+	favoriteID := c.Param("favoriteId")
+	logger.Log.Info("GetKitchenFavoriteSupplier called", "kitchen_id", kitchenID, "favorite_id", favoriteID, "user_id", uid)
+
+	var favorite models.KitchenFavoriteSupplier
+	if err := store.DB.GormClient.
+		Where("favorite_id = ? AND kitchen_id = ?", favoriteID, kitchenID).
+		Preload("Kitchen").
+		Preload("Supplier").
+		Preload("CreatedBy").
+		First(&favorite).Error; err != nil {
+		logger.Log.Error("GetKitchenFavoriteSupplier not found", "kitchen_id", kitchenID, "favorite_id", favoriteID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Favorite supplier not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, favorite)
+}
+
+// CreateKitchenFavoriteSupplier adds a supplier to a kitchen's favorites
+func CreateKitchenFavoriteSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	kitchenID := c.Param("id")
+	logger.Log.Info("CreateKitchenFavoriteSupplier called", "kitchen_id", kitchenID, "user_id", uid)
+
+	// Get user ID from authentication middleware
+	var userID string
+	if identity, ok := c.Get("identity"); ok {
+		if v, ok2 := identity.(string); ok2 {
+			userID = v
+		}
+	}
+
+	var favorite models.KitchenFavoriteSupplier
+	if err := c.ShouldBindJSON(&favorite); err != nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set kitchen_id from URL parameter
+	favorite.KitchenID = kitchenID
+	favorite.CreatedByUserID = userID
+
+	// Validate kitchen exists
+	var kitchen models.Kitchen
+	if err := store.DB.GormClient.First(&kitchen, "kitchen_id = ?", kitchenID).Error; err != nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier kitchen not found", "kitchen_id", kitchenID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
+		return
+	}
+
+	// Validate supplier exists
+	var supplier models.Supplier
+	if err := store.DB.GormClient.First(&supplier, "supplier_id = ?", favorite.SupplierID).Error; err != nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier supplier not found", "supplier_id", favorite.SupplierID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
+		return
+	}
+
+	// Check if favorite already exists (unique constraint: kitchen_id + supplier_id)
+	var existing models.KitchenFavoriteSupplier
+	if err := store.DB.GormClient.Where("kitchen_id = ? AND supplier_id = ?", kitchenID, favorite.SupplierID).First(&existing).Error; err == nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier duplicate favorite", "kitchen_id", kitchenID, "supplier_id", favorite.SupplierID)
+		c.JSON(http.StatusConflict, gin.H{"error": "This supplier is already in the kitchen's favorites"})
+		return
+	}
+
+	// Create favorite
+	if err := store.DB.GormClient.Create(&favorite).Error; err != nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload with relations
+	store.DB.GormClient.
+		Preload("Kitchen").
+		Preload("Supplier").
+		Preload("CreatedBy").
+		First(&favorite, "favorite_id = ?", favorite.FavoriteID)
+
+	c.JSON(http.StatusCreated, favorite)
+}
+
+// UpdateKitchenFavoriteSupplier updates a favorite supplier entry
+func UpdateKitchenFavoriteSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	kitchenID := c.Param("id")
+	favoriteID := c.Param("favoriteId")
+	logger.Log.Info("UpdateKitchenFavoriteSupplier called", "kitchen_id", kitchenID, "favorite_id", favoriteID, "user_id", uid)
+
+	var favorite models.KitchenFavoriteSupplier
+	if err := store.DB.GormClient.Where("favorite_id = ? AND kitchen_id = ?", favoriteID, kitchenID).First(&favorite).Error; err != nil {
+		logger.Log.Error("UpdateKitchenFavoriteSupplier not found", "kitchen_id", kitchenID, "favorite_id", favoriteID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Favorite supplier not found"})
+		return
+	}
+
+	// Define update struct (don't allow changing kitchen_id or supplier_id)
+	var updateData struct {
+		Notes        string `json:"notes"`
+		DisplayOrder *int   `json:"displayOrder"`
+	}
+
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		logger.Log.Error("UpdateKitchenFavoriteSupplier bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update allowed fields
+	favorite.Notes = updateData.Notes
+	favorite.DisplayOrder = updateData.DisplayOrder
+
+	if err := store.DB.GormClient.Save(&favorite).Error; err != nil {
+		logger.Log.Error("UpdateKitchenFavoriteSupplier db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload with relations
+	store.DB.GormClient.
+		Preload("Kitchen").
+		Preload("Supplier").
+		Preload("CreatedBy").
+		First(&favorite, "favorite_id = ?", favoriteID)
+
+	c.JSON(http.StatusOK, favorite)
+}
+
+// DeleteKitchenFavoriteSupplier removes a supplier from a kitchen's favorites
+func DeleteKitchenFavoriteSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	kitchenID := c.Param("id")
+	favoriteID := c.Param("favoriteId")
+	logger.Log.Info("DeleteKitchenFavoriteSupplier called", "kitchen_id", kitchenID, "favorite_id", favoriteID, "user_id", uid)
+
+	if err := store.DB.GormClient.Where("favorite_id = ? AND kitchen_id = ?", favoriteID, kitchenID).Delete(&models.KitchenFavoriteSupplier{}).Error; err != nil {
+		logger.Log.Error("DeleteKitchenFavoriteSupplier db error", "kitchen_id", kitchenID, "favorite_id", favoriteID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Favorite supplier removed successfully"})
+}

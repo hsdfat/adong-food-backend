@@ -16,3 +16,24 @@ type Kitchen struct {
 func (Kitchen) TableName() string {
     return "master_kitchens"
 }
+
+// KitchenFavoriteSupplier - Favorite suppliers for each kitchen (kitchen_favorite_suppliers)
+type KitchenFavoriteSupplier struct {
+	FavoriteID      int       `gorm:"primaryKey;autoIncrement;column:favorite_id" json:"favoriteId"`
+	KitchenID       string    `gorm:"column:kitchen_id;type:varchar(50);not null" json:"kitchenId"`
+	SupplierID      string    `gorm:"column:supplier_id;type:varchar(50);not null" json:"supplierId"`
+	Notes           string    `gorm:"column:notes;type:text" json:"notes"`
+	DisplayOrder    *int      `gorm:"column:display_order" json:"displayOrder"`
+	CreatedByUserID string    `gorm:"column:created_by_user_id;type:varchar(50)" json:"createdByUserId"`
+	CreatedDate     time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate    time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	Kitchen       *Kitchen  `gorm:"foreignKey:KitchenID;references:KitchenID" json:"kitchen,omitempty"`
+	Supplier      *Supplier `gorm:"foreignKey:SupplierID;references:SupplierID" json:"supplier,omitempty"`
+	CreatedBy     *User     `gorm:"foreignKey:CreatedByUserID;references:UserID" json:"createdBy,omitempty"`
+}
+
+func (KitchenFavoriteSupplier) TableName() string {
+	return "kitchen_favorite_suppliers"
+}

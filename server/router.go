@@ -126,8 +126,16 @@ func SetupRouter() *gin.Engine {
 		api.DELETE("/ingredients/:id", handler.DeleteIngredient)
 
 		api.GET("/kitchens", handler.GetKitchens)
-		api.GET("/kitchens/:id", handler.GetKitchen)
 		api.POST("/kitchens", handler.CreateKitchen)
+		
+		// Kitchen favorite suppliers (must be before /kitchens/:id to avoid route conflict)
+		api.GET("/kitchens/:id/favorite-suppliers", handler.GetKitchenFavoriteSuppliers)
+		api.GET("/kitchens/:id/favorite-suppliers/:favoriteId", handler.GetKitchenFavoriteSupplier)
+		api.POST("/kitchens/:id/favorite-suppliers", handler.CreateKitchenFavoriteSupplier)
+		api.PUT("/kitchens/:id/favorite-suppliers/:favoriteId", handler.UpdateKitchenFavoriteSupplier)
+		api.DELETE("/kitchens/:id/favorite-suppliers/:favoriteId", handler.DeleteKitchenFavoriteSupplier)
+		
+		api.GET("/kitchens/:id", handler.GetKitchen)
 		api.PUT("/kitchens/:id", handler.UpdateKitchen)
 		api.DELETE("/kitchens/:id", handler.DeleteKitchen)
 

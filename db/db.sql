@@ -13,6 +13,19 @@ BEGIN;
 -- MASTER DATA TABLES (Unchanged)
 -- ============================================================================
 
+-- Ingredient Types Lookup Table
+CREATE TABLE IF NOT EXISTS public.ingredient_types
+(
+    ingredient_type_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_type_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default",
+    active boolean NOT NULL DEFAULT true,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ingredient_types_pkey PRIMARY KEY (ingredient_type_id),
+    CONSTRAINT ingredient_types_name_key UNIQUE (ingredient_type_name)
+);
+
 CREATE TABLE IF NOT EXISTS public.master_dishes
 (
     dish_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
@@ -31,6 +44,7 @@ CREATE TABLE IF NOT EXISTS public.master_ingredients
 (
     ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
     ingredient_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_type_id character varying(50) COLLATE pg_catalog."default",
     properties character varying(100) COLLATE pg_catalog."default",
     material_group character varying(100) COLLATE pg_catalog."default",
     unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
@@ -212,9 +226,34 @@ CREATE TABLE IF NOT EXISTS public.order_ingredient_suppliers
     CONSTRAINT uq_order_ingredient_supplier UNIQUE (order_id, ingredient_id)
 );
 
+-- Create the kitchen favorite suppliers table
+CREATE TABLE IF NOT EXISTS public.kitchen_favorite_suppliers
+(
+    favorite_id integer NOT NULL GENERATED ALWAYS AS IDENTITY 
+        ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    supplier_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    notes text COLLATE pg_catalog."default",  -- Optional notes about why this supplier is favorited
+    display_order integer,  -- Optional: For custom ordering of favorites
+    created_by_user_id character varying(50) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT kitchen_favorite_suppliers_pkey PRIMARY KEY (favorite_id),
+    -- Prevent duplicate entries: one kitchen cannot favorite the same supplier twice
+    CONSTRAINT uq_kitchen_supplier_favorite UNIQUE (kitchen_id, supplier_id)
+);
+
+
 -- ============================================================================
 -- FOREIGN KEY CONSTRAINTS
 -- ============================================================================
+
+-- Ingredient Types
+ALTER TABLE IF EXISTS public.master_ingredients
+    ADD CONSTRAINT fk_ingredient_type FOREIGN KEY (ingredient_type_id)
+    REFERENCES public.ingredient_types (ingredient_type_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
 
 -- Dish Recipe Standards
 ALTER TABLE IF EXISTS public.dish_recipe_standards
@@ -338,6 +377,24 @@ ALTER TABLE IF EXISTS public.order_ingredient_suppliers
     ON UPDATE CASCADE
     ON DELETE SET NULL;
 
+ALTER TABLE IF EXISTS public.kitchen_favorite_suppliers
+    ADD CONSTRAINT fk_favorite_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;  -- If kitchen is deleted, remove all its favorites
+
+ALTER TABLE IF EXISTS public.kitchen_favorite_suppliers
+    ADD CONSTRAINT fk_favorite_supplier FOREIGN KEY (supplier_id)
+    REFERENCES public.master_suppliers (supplier_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;  -- If supplier is deleted, remove it from all favorites
+
+ALTER TABLE IF EXISTS public.kitchen_favorite_suppliers
+    ADD CONSTRAINT fk_favorite_user FOREIGN KEY (created_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;  -- If user is deleted, keep the favorite but nullify the user
+
 -- ============================================================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================================================
@@ -367,5 +424,7 @@ CREATE INDEX IF NOT EXISTS idx_ois_ingredient ON public.order_ingredient_supplie
 CREATE INDEX IF NOT EXISTS idx_ois_supplier ON public.order_ingredient_suppliers(selected_supplier_id);
 CREATE INDEX IF NOT EXISTS idx_ois_product ON public.order_ingredient_suppliers(selected_product_id);
 
-END;
+CREATE INDEX IF NOT EXISTS idx_favorite_kitchen ON public.kitchen_favorite_suppliers(kitchen_id);    
+CREATE INDEX IF NOT EXISTS idx_favorite_supplier ON public.kitchen_favorite_suppliers(supplier_id);
 
+END;
