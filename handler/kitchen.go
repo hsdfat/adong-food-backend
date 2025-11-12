@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"adong-be/models"
 	"adong-be/logger"
+	"adong-be/models"
 	"adong-be/store"
 	"adong-be/utils"
 	"net/http"
@@ -12,8 +12,8 @@ import (
 
 // GetKitchens with pagination and search - Returns ResourceCollection format
 func GetKitchens(c *gin.Context) {
-    uid, _ := c.Get("identity")
-    logger.Log.Info("GetKitchens called", "user_id", uid)
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetKitchens called", "user_id", uid)
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		logger.Log.Error("GetKitchens bind query error", "error", err)
@@ -71,8 +71,8 @@ func GetKitchens(c *gin.Context) {
 }
 
 func GetKitchen(c *gin.Context) {
-    uid, _ := c.Get("identity")
-    logger.Log.Info("GetKitchen called", "id", c.Param("id"), "user_id", uid)
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetKitchen called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.Kitchen
 	if err := store.DB.GormClient.First(&item, "kitchen_id = ?", id).Error; err != nil {
@@ -84,8 +84,8 @@ func GetKitchen(c *gin.Context) {
 }
 
 func CreateKitchen(c *gin.Context) {
-    uid, _ := c.Get("identity")
-    logger.Log.Info("CreateKitchen called", "user_id", uid)
+	uid, _ := c.Get("identity")
+	logger.Log.Info("CreateKitchen called", "user_id", uid)
 	var item models.Kitchen
 	if err := c.ShouldBindJSON(&item); err != nil {
 		logger.Log.Error("CreateKitchen bind error", "error", err)
@@ -101,8 +101,8 @@ func CreateKitchen(c *gin.Context) {
 }
 
 func UpdateKitchen(c *gin.Context) {
-    uid, _ := c.Get("identity")
-    logger.Log.Info("UpdateKitchen called", "id", c.Param("id"), "user_id", uid)
+	uid, _ := c.Get("identity")
+	logger.Log.Info("UpdateKitchen called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	var item models.Kitchen
 	if err := store.DB.GormClient.First(&item, "kitchen_id = ?", id).Error; err != nil {
@@ -124,8 +124,8 @@ func UpdateKitchen(c *gin.Context) {
 }
 
 func DeleteKitchen(c *gin.Context) {
-    uid, _ := c.Get("identity")
-    logger.Log.Info("DeleteKitchen called", "id", c.Param("id"), "user_id", uid)
+	uid, _ := c.Get("identity")
+	logger.Log.Info("DeleteKitchen called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 	if err := store.DB.GormClient.Delete(&models.Kitchen{}, "kitchen_id = ?", id).Error; err != nil {
 		logger.Log.Error("DeleteKitchen db error", "id", id, "error", err)
@@ -168,7 +168,20 @@ func GetKitchenFavoriteSuppliers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, favorites)
+	// Count total favorites for meta info
+	var total int64
+	if err := store.DB.GormClient.Model(&models.KitchenFavoriteSupplier{}).Where("kitchen_id = ?", kitchenID).Count(&total).Error; err != nil {
+		logger.Log.Error("GetKitchenFavoriteSuppliers count error", "kitchen_id", kitchenID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create pagination meta (using page 1, all items as per_page)
+	meta := models.CalculatePaginationMeta(1, len(favorites), total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: favorites,
+		Meta: meta,
+	})
 }
 
 // GetKitchenFavoriteSupplier returns a single favorite supplier by ID
