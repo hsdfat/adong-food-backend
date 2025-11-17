@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hsdfat/go-auth-middleware/core"
 	"github.com/hsdfat/go-auth-middleware/ginauth"
 )
 
@@ -17,7 +16,7 @@ func SetupRouter() *gin.Engine {
 	// Create user provider
 
 	// Create enhanced token storage
-	tokenStorage := core.NewInMemoryTokenStorage()
+	// tokenStorage := core.NewInMemoryTokenStorage()
 
 	// Create enhanced auth middleware
 	authMiddleware := ginauth.NewEnhanced(ginauth.EnhancedAuthConfig{
@@ -40,7 +39,7 @@ func SetupRouter() *gin.Engine {
 		CookieDomain:      "",
 
 		// Storage and providers
-		TokenStorage: tokenStorage,
+		TokenStorage: store.DB,
 		UserProvider: store.DB,
 
 		// Authentication function

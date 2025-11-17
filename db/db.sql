@@ -427,4 +427,71 @@ CREATE INDEX IF NOT EXISTS idx_ois_product ON public.order_ingredient_suppliers(
 CREATE INDEX IF NOT EXISTS idx_favorite_kitchen ON public.kitchen_favorite_suppliers(kitchen_id);    
 CREATE INDEX IF NOT EXISTS idx_favorite_supplier ON public.kitchen_favorite_suppliers(supplier_id);
 
+-- ============================================================================
+-- AUTHENTICATION TOKEN TABLES
+-- ============================================================================
+
+-- Token pairs for access and refresh token management
+CREATE TABLE IF NOT EXISTS public.auth_token_pairs
+(
+    session_id character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    access_token character varying(1000) COLLATE pg_catalog."default" NOT NULL,
+    refresh_token character varying(1000) COLLATE pg_catalog."default" NOT NULL,
+    access_expires_at timestamp without time zone NOT NULL,
+    refresh_expires_at timestamp without time zone NOT NULL,
+    user_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    last_activity timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT auth_token_pairs_pkey PRIMARY KEY (session_id)
+);
+
+-- User sessions for extended session tracking
+CREATE TABLE IF NOT EXISTS public.auth_user_sessions
+(
+    session_id character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    user_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ip_address character varying(45) COLLATE pg_catalog."default",
+    user_agent text COLLATE pg_catalog."default",
+    last_activity timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_active boolean NOT NULL DEFAULT true,
+    login_time timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    logout_time timestamp without time zone,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT auth_user_sessions_pkey PRIMARY KEY (session_id)
+);
+
+-- ============================================================================
+-- FOREIGN KEY CONSTRAINTS FOR AUTHENTICATION TABLES
+-- ============================================================================
+
+-- Token Pairs
+ALTER TABLE IF EXISTS public.auth_token_pairs
+    ADD CONSTRAINT fk_token_user FOREIGN KEY (user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- User Sessions
+ALTER TABLE IF EXISTS public.auth_user_sessions
+    ADD CONSTRAINT fk_session_user FOREIGN KEY (user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+-- ============================================================================
+-- INDEXES FOR AUTHENTICATION TABLES
+-- ============================================================================
+
+CREATE INDEX IF NOT EXISTS idx_token_user ON public.auth_token_pairs(user_id);
+CREATE INDEX IF NOT EXISTS idx_token_access_expires ON public.auth_token_pairs(access_expires_at);
+CREATE INDEX IF NOT EXISTS idx_token_refresh_expires ON public.auth_token_pairs(refresh_expires_at);
+CREATE INDEX IF NOT EXISTS idx_token_last_activity ON public.auth_token_pairs(last_activity);
+
+CREATE INDEX IF NOT EXISTS idx_session_user ON public.auth_user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_session_active ON public.auth_user_sessions(is_active);
+CREATE INDEX IF NOT EXISTS idx_session_login_time ON public.auth_user_sessions(login_time);
+CREATE INDEX IF NOT EXISTS idx_session_last_activity ON public.auth_user_sessions(last_activity);
+
 END;
