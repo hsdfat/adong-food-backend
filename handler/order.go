@@ -5,20 +5,19 @@ import (
 	"adong-be/models"
 	"adong-be/store"
 	"adong-be/utils"
+	"errors"
 	"net/http"
 	"time"
-
-	"errors"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// GetOrders lists orders with filters: kitchen_id, status, date range, dish_id, ingredient_id
 func GetOrders(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("GetOrders called", "user_id", uid)
+
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		logger.Log.Error("GetOrders bind query error", "error", err)
@@ -26,13 +25,7 @@ func GetOrders(c *gin.Context) {
 		return
 	}
 
-	params = models.GetPaginationParams(
-		params.Page,
-		params.PageSize,
-		params.Search,
-		params.SortBy,
-		params.SortDir,
-	)
+	params = models.GetPaginationParams(params.Page, params.PageSize, params.Search, params.SortBy, params.SortDir)
 
 	kitchenID := c.Query("kitchen_id")
 	status := c.Query("status")
@@ -41,35 +34,17 @@ func GetOrders(c *gin.Context) {
 	dishID := c.Query("dish_id")
 	ingredientID := c.Query("ingredient_id")
 
-	// Get user role to check if user is Admin
-	var userRole string
-	if identity, ok := c.Get("identity"); ok {
-		if userID, ok2 := identity.(string); ok2 {
-			var user models.User
-			if err := store.DB.GormClient.Select("role").First(&user, "user_id = ?", userID).Error; err == nil {
-				userRole = user.Role
-			}
-		}
-	}
-
-	var total int64
 	var orders []models.Order
+	var total int64
 
-	// Use separate queries for counting and data to avoid DISTINCT affecting selected columns
 	dataDB := store.DB.GormClient.Model(&models.Order{})
 	countDB := store.DB.GormClient.Model(&models.Order{})
 
-	// Filter by created_by_user_id if user is not Admin
-	if userRole != "Admin" {
-		if identity, ok := c.Get("identity"); ok {
-			if userID, ok2 := identity.(string); ok2 {
-				dataDB = dataDB.Where("created_by_user_id = ?", userID)
-				countDB = countDB.Where("created_by_user_id = ?", userID)
-			}
-		}
+	if dishID != "" || ingredientID != "" {
+		countDB = countDB.Distinct("orders.order_id")
+		dataDB = dataDB.Distinct("orders.order_id")
 	}
 
-	// Filters
 	if params.Search != "" {
 		dataDB = dataDB.Where("note ILIKE ? OR order_id ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 		countDB = countDB.Where("note ILIKE ? OR order_id ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
@@ -113,14 +88,12 @@ func GetOrders(c *gin.Context) {
 			Where("oi.ingredient_id = ?", ingredientID)
 	}
 
-	// Count distinct orders
 	if err := countDB.Distinct("orders.order_id").Count(&total).Error; err != nil {
 		logger.Log.Error("GetOrders count error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Sorting
 	allowedSort := map[string]string{
 		"order_id":     "orders.order_id",
 		"order_date":   "orders.order_date",
@@ -128,11 +101,8 @@ func GetOrders(c *gin.Context) {
 		"created_date": "orders.created_date",
 	}
 	dataDB = utils.ApplySort(dataDB, params.SortBy, params.SortDir, allowedSort)
-
-	// Pagination
 	dataDB = utils.ApplyPagination(dataDB, params.Page, params.PageSize)
 
-	// Fetch and preload relations for DTO
 	if err := dataDB.Select("orders.*").
 		Preload("Kitchen").
 		Preload("CreatedBy").
@@ -145,7 +115,6 @@ func GetOrders(c *gin.Context) {
 		return
 	}
 
-	// Map to DTOs
 	dtos := make([]models.OrderDTO, len(orders))
 	for i := range orders {
 		dtos[i] = convertOrderToDTO(&orders[i], true)
@@ -155,7 +124,6 @@ func GetOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, models.ResourceCollection{Data: dtos, Meta: meta})
 }
 
-// GetOrder returns a single order with full details
 func GetOrder(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("GetOrder called", "id", c.Param("id"), "user_id", uid)
@@ -177,7 +145,6 @@ func GetOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, dto)
 }
 
-// CreateOrder creates a new order with nested details/ingredients/supplementary foods
 func CreateOrder(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("CreateOrder called", "user_id", uid)
@@ -188,14 +155,12 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from authentication middleware
 	if identity, ok := c.Get("identity"); ok {
 		if v, ok2 := identity.(string); ok2 {
 			order.CreatedByUserID = v
 		}
 	}
 
-	// Auto-generate OrderID if not provided
 	if order.OrderID == "" {
 		order.OrderID = uuid.New().String()
 		logger.Log.Info("CreateOrder auto-generated OrderID", "orderId", order.OrderID)
@@ -208,13 +173,11 @@ func CreateOrder(c *gin.Context) {
 		}
 	}()
 
-	// Store details and supplementary foods temporarily to avoid GORM auto-saving them
 	details := order.Details
 	supplementaryFoods := order.SupplementaryFoods
 	order.Details = nil
 	order.SupplementaryFoods = nil
 
-	// Create order without details/supplementary foods
 	if err := tx.Create(&order).Error; err != nil {
 		logger.Log.Error("CreateOrder create header error", "error", err)
 		tx.Rollback()
@@ -222,16 +185,13 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Create details and nested ingredients
 	for i := range details {
 		details[i].OrderID = order.OrderID
-		details[i].OrderDetailID = 0 // Ensure auto-increment
+		details[i].OrderDetailID = 0
 
-		// Store ingredients temporarily to avoid GORM auto-saving them
 		ingredients := details[i].Ingredients
 		details[i].Ingredients = nil
 
-		// Create order detail without ingredients
 		if err := tx.Create(&details[i]).Error; err != nil {
 			logger.Log.Error("CreateOrder create detail error", "error", err)
 			tx.Rollback()
@@ -239,22 +199,15 @@ func CreateOrder(c *gin.Context) {
 			return
 		}
 
-		// Create ingredients manually after order detail is created
 		for j := range ingredients {
 			ingredients[j].OrderDetailID = details[i].OrderDetailID
-			ingredients[j].OrderIngredientID = 0 // Ensure auto-increment
+			ingredients[j].OrderIngredientID = 0
 
-			// Calculate quantity if it's 0 or missing (similar to how summary queries work)
 			if ingredients[j].Quantity <= 0 {
 				if ingredients[j].StandardPerPortion > 0 && details[i].Portions > 0 {
 					ingredients[j].Quantity = ingredients[j].StandardPerPortion * float64(details[i].Portions)
 				} else {
-					// If quantity can't be calculated and is 0, skip this ingredient
-					logger.Log.Warn("CreateOrder skipping ingredient with invalid quantity",
-						"ingredient_id", ingredients[j].IngredientID,
-						"quantity", ingredients[j].Quantity,
-						"standard_per_portion", ingredients[j].StandardPerPortion,
-						"portions", details[i].Portions)
+					logger.Log.Warn("CreateOrder skipping ingredient with invalid quantity", "ingredient_id", ingredients[j].IngredientID)
 					continue
 				}
 			}
@@ -268,22 +221,15 @@ func CreateOrder(c *gin.Context) {
 		}
 	}
 
-	// Create supplementary foods
 	for i := range supplementaryFoods {
 		supplementaryFoods[i].OrderID = order.OrderID
-		supplementaryFoods[i].SupplementaryID = 0 // Ensure auto-increment
+		supplementaryFoods[i].SupplementaryID = 0
 
-		// Calculate quantity if it's 0 or missing (similar to how summary queries work)
 		if supplementaryFoods[i].Quantity <= 0 {
 			if supplementaryFoods[i].StandardPerPortion > 0 && supplementaryFoods[i].Portions > 0 {
 				supplementaryFoods[i].Quantity = supplementaryFoods[i].StandardPerPortion * float64(supplementaryFoods[i].Portions)
 			} else {
-				// If quantity can't be calculated and is 0, skip this supplementary food
-				logger.Log.Warn("CreateOrder skipping supplementary food with invalid quantity",
-					"ingredient_id", supplementaryFoods[i].IngredientID,
-					"quantity", supplementaryFoods[i].Quantity,
-					"standard_per_portion", supplementaryFoods[i].StandardPerPortion,
-					"portions", supplementaryFoods[i].Portions)
+				logger.Log.Warn("CreateOrder skipping supplementary with invalid quantity", "ingredient_id", supplementaryFoods[i].IngredientID)
 				continue
 			}
 		}
@@ -302,7 +248,6 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// Reload with relations
 	store.DB.GormClient.
 		Preload("Kitchen").
 		Preload("CreatedBy").
@@ -315,13 +260,20 @@ func CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusCreated, dto)
 }
 
-// UpdateOrderStatus updates only the status of an order (PATCH method)
 func UpdateOrderStatus(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("UpdateOrderStatus called", "id", c.Param("id"), "user_id", uid)
 	id := c.Param("id")
 
-	// Check if order exists
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Log.Error("UpdateOrderStatus bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	var order models.Order
 	if err := store.DB.GormClient.First(&order, "order_id = ?", id).Error; err != nil {
 		logger.Log.Error("UpdateOrderStatus not found", "id", id, "error", err)
@@ -329,42 +281,16 @@ func UpdateOrderStatus(c *gin.Context) {
 		return
 	}
 
-	// Define a struct to accept only status field
-	var updateData struct {
-		Status string `json:"status" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&updateData); err != nil {
-		logger.Log.Error("UpdateOrderStatus bind error", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Update only the status field
-	if err := store.DB.GormClient.Model(&order).Update("status", updateData.Status).Error; err != nil {
-		logger.Log.Error("UpdateOrderStatus db error", "id", id, "error", err)
+	order.Status = req.Status
+	if err := store.DB.GormClient.Save(&order).Error; err != nil {
+		logger.Log.Error("UpdateOrderStatus db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Reload with relations
-	if err := store.DB.GormClient.
-		Preload("Kitchen").
-		Preload("CreatedBy").
-		Preload("Details.Dish").
-		Preload("Details.Ingredients.Ingredient").
-		Preload("SupplementaryFoods.Ingredient").
-		First(&order, "order_id = ?", id).Error; err != nil {
-		logger.Log.Error("UpdateOrderStatus reload error", "id", id, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	dto := convertOrderToDTO(&order, true)
-	c.JSON(http.StatusOK, dto)
+	c.JSON(http.StatusOK, gin.H{"message": "Order status updated successfully", "status": order.Status})
 }
 
-// DeleteOrder deletes an order by id (cascade removes children)
 func DeleteOrder(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("DeleteOrder called", "id", c.Param("id"), "user_id", uid)
@@ -377,7 +303,6 @@ func DeleteOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Order deleted successfully"})
 }
 
-// IngredientTotal represents total usage per ingredient for an order
 type IngredientTotal struct {
 	IngredientID   string  `json:"ingredientId"`
 	IngredientName string  `json:"ingredientName"`
@@ -385,7 +310,6 @@ type IngredientTotal struct {
 	TotalQuantity  float64 `json:"totalQuantity"`
 }
 
-// GetOrderIngredientsSummary returns totals of ingredients for an order (details + supplementary)
 func GetOrderIngredientsSummary(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("GetOrderIngredientsSummary called", "order_id", c.Param("id"), "user_id", uid)
@@ -424,7 +348,6 @@ func GetOrderIngredientsSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
-// GetOrderIngredientSummary returns total for a specific ingredient in an order
 func GetOrderIngredientSummary(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("GetOrderIngredientSummary called", "order_id", c.Param("id"), "ingredient_id", c.Param("ingredientId"), "user_id", uid)
@@ -464,14 +387,168 @@ func GetOrderIngredientSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// SaveOrderIngredientsWithSupplier - Save selected suppliers for ingredients in an order
-// This saves (order_id, ingredient_id) pairs with selected supplier/product information
+type SupplierOption struct {
+	ProductID      int     `json:"productId"`
+	ProductName    string  `json:"productName"`
+	SupplierID     string  `json:"supplierId"`
+	SupplierName   string  `json:"supplierName"`
+	UnitPrice      float64 `json:"unitPrice"`
+	Unit           string  `json:"unit"`
+	Specification  string  `json:"specification"`
+	IsFavorite     bool    `json:"isFavorite"`
+	IsLowestPrice  bool    `json:"isLowestPrice"`
+	TotalCost      float64 `json:"totalCost"`
+}
+
+type IngredientSuppliers struct {
+	IngredientID   string           `json:"ingredientId"`
+	IngredientName string           `json:"ingredientName"`
+	TotalQuantity  float64          `json:"totalQuantity"`
+	Unit           string           `json:"unit"`
+	BestSupplier   *SupplierOption  `json:"bestSupplier"`
+	AllSuppliers   []SupplierOption `json:"allSuppliers"`
+}
+
+// GetBestSuppliersForOrder returns best supplier recommendations for all ingredients
+func GetBestSuppliersForOrder(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	orderID := c.Param("id")
+	logger.Log.Info("GetBestSuppliersForOrder called", "order_id", orderID, "user_id", uid)
+
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
+		logger.Log.Error("GetBestSuppliersForOrder order not found", "order_id", orderID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	var ingredients []IngredientTotal
+	sql := `
+        SELECT DISTINCT x.ingredient_id AS ingredient_id,
+               COALESCE(mi.ingredient_name, '') AS ingredient_name,
+               x.unit AS unit,
+               COALESCE(SUM(x.total_qty)::double precision, 0) AS total_quantity
+        FROM (
+            SELECT oi.ingredient_id,
+                   oi.unit,
+                   COALESCE(oi.quantity, oi.standard_per_portion * od.portions) AS total_qty
+            FROM order_ingredients oi
+            JOIN order_details od ON od.order_detail_id = oi.order_detail_id
+            WHERE od.order_id = ?
+            UNION ALL
+            SELECT osf.ingredient_id,
+                   osf.unit,
+                   COALESCE(osf.quantity, osf.standard_per_portion * osf.portions) AS total_qty
+            FROM order_supplementary_foods osf
+            WHERE osf.order_id = ?
+        ) x
+        LEFT JOIN master_ingredients mi ON mi.ingredient_id = x.ingredient_id
+        GROUP BY x.ingredient_id, mi.ingredient_name, x.unit`
+
+	if err := store.DB.GormClient.Raw(sql, orderID, orderID).Scan(&ingredients).Error; err != nil {
+		logger.Log.Error("GetBestSuppliersForOrder ingredients query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var favorites []models.KitchenFavoriteSupplier
+	store.DB.GormClient.Where("kitchen_id = ?", order.KitchenID).Find(&favorites)
+	
+	favoriteMap := make(map[string]bool)
+	for _, fav := range favorites {
+		favoriteMap[fav.SupplierID] = true
+	}
+
+	var results []IngredientSuppliers
+
+	for _, ing := range ingredients {
+		var prices []models.SupplierPrice
+		if err := store.DB.GormClient.
+			Preload("Supplier").
+			Where("ingredient_id = ? AND active = true", ing.IngredientID).
+			Where("(effective_from IS NULL OR effective_from <= NOW())").
+			Where("(effective_to IS NULL OR effective_to >= NOW())").
+			Order("unit_price ASC").
+			Find(&prices).Error; err != nil {
+			logger.Log.Error("GetBestSuppliersForOrder prices query error", "ingredient_id", ing.IngredientID, "error", err)
+			continue
+		}
+
+		if len(prices) == 0 {
+			logger.Log.Warn("GetBestSuppliersForOrder no prices found", "ingredient_id", ing.IngredientID)
+			results = append(results, IngredientSuppliers{
+				IngredientID:   ing.IngredientID,
+				IngredientName: ing.IngredientName,
+				TotalQuantity:  ing.TotalQuantity,
+				Unit:           ing.Unit,
+				BestSupplier:   nil,
+				AllSuppliers:   []SupplierOption{},
+			})
+			continue
+		}
+
+		lowestPrice := prices[0].UnitPrice
+
+		var allSuppliers []SupplierOption
+		var bestSupplier *SupplierOption
+		var favoriteSuppliers []SupplierOption
+
+		for _, price := range prices {
+			isFavorite := favoriteMap[price.SupplierID]
+			isLowestPrice := (price.UnitPrice == lowestPrice)
+			totalCost := ing.TotalQuantity * price.UnitPrice
+
+			option := SupplierOption{
+				ProductID:     price.ProductID,
+				ProductName:   price.ProductName,
+				SupplierID:    price.SupplierID,
+				UnitPrice:     price.UnitPrice,
+				Unit:          price.Unit,
+				Specification: price.Specification,
+				IsFavorite:    isFavorite,
+				IsLowestPrice: isLowestPrice,
+				TotalCost:     totalCost,
+			}
+
+			if price.Supplier != nil {
+				option.SupplierName = price.Supplier.SupplierName
+			}
+
+			allSuppliers = append(allSuppliers, option)
+
+			if isFavorite {
+				favoriteSuppliers = append(favoriteSuppliers, option)
+			}
+		}
+
+		if len(favoriteSuppliers) > 0 {
+			bestSupplier = &favoriteSuppliers[0]
+		} else {
+			bestSupplier = &allSuppliers[0]
+		}
+
+		results = append(results, IngredientSuppliers{
+			IngredientID:   ing.IngredientID,
+			IngredientName: ing.IngredientName,
+			TotalQuantity:  ing.TotalQuantity,
+			Unit:           ing.Unit,
+			BestSupplier:   bestSupplier,
+			AllSuppliers:   allSuppliers,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orderId":     orderID,
+		"kitchenId":   order.KitchenID,
+		"ingredients": results,
+	})
+}
+
 func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	orderID := c.Param("id")
 	logger.Log.Info("SaveOrderIngredientsWithSupplier called", "order_id", orderID, "user_id", uid)
 
-	// Get user ID from authentication middleware
 	var userID string
 	if identity, ok := c.Get("identity"); ok {
 		if v, ok2 := identity.(string); ok2 {
@@ -479,12 +556,11 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		}
 	}
 
-	// Define request structure - list of ingredient selections
 	var request struct {
 		Selections []struct {
 			IngredientID       string  `json:"ingredientId" binding:"required"`
 			SelectedSupplierID string  `json:"selectedSupplierId" binding:"required"`
-			SelectedProductID int     `json:"selectedProductId" binding:"required"`
+			SelectedProductID  int     `json:"selectedProductId" binding:"required"`
 			Quantity           float64 `json:"quantity" binding:"required,gt=0"`
 			Unit               string  `json:"unit" binding:"required"`
 			UnitPrice          float64 `json:"unitPrice" binding:"required,gte=0"`
@@ -498,7 +574,6 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		return
 	}
 
-	// Validate order exists
 	var order models.Order
 	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
 		logger.Log.Error("SaveOrderIngredientsWithSupplier order not found", "order_id", orderID, "error", err)
@@ -506,9 +581,7 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		return
 	}
 
-	// Validate all selections before processing
 	for i, sel := range request.Selections {
-		// Validate ingredient exists
 		var ingredient models.Ingredient
 		if err := store.DB.GormClient.First(&ingredient, "ingredient_id = ?", sel.IngredientID).Error; err != nil {
 			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not found", "ingredient_id", sel.IngredientID, "error", err)
@@ -516,7 +589,6 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 			return
 		}
 
-		// Validate supplier exists
 		var supplier models.Supplier
 		if err := store.DB.GormClient.First(&supplier, "supplier_id = ?", sel.SelectedSupplierID).Error; err != nil {
 			logger.Log.Error("SaveOrderIngredientsWithSupplier supplier not found", "supplier_id", sel.SelectedSupplierID, "error", err)
@@ -524,20 +596,18 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 			return
 		}
 
-		// Validate product exists and belongs to supplier and ingredient
 		var product models.SupplierPrice
-		if err := store.DB.GormClient.First(&product, "product_id = ? AND supplier_id = ? AND ingredient_id = ?", 
+		if err := store.DB.GormClient.First(&product, "product_id = ? AND supplier_id = ? AND ingredient_id = ?",
 			sel.SelectedProductID, sel.SelectedSupplierID, sel.IngredientID).Error; err != nil {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier product not found or mismatch", 
-				"product_id", sel.SelectedProductID, 
-				"supplier_id", sel.SelectedSupplierID, 
-				"ingredient_id", sel.IngredientID, 
+			logger.Log.Error("SaveOrderIngredientsWithSupplier product mismatch",
+				"product_id", sel.SelectedProductID,
+				"supplier_id", sel.SelectedSupplierID,
+				"ingredient_id", sel.IngredientID,
 				"error", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Product not found or does not match supplier/ingredient"})
 			return
 		}
 
-		// Validate ingredient belongs to the specified order (either in order_ingredients or order_supplementary_foods)
 		var presentCount int64
 		presentSQL := `
 			SELECT COUNT(*) AS cnt FROM (
@@ -551,30 +621,27 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 				WHERE osf.order_id = ? AND osf.ingredient_id = ?
 			) x`
 		if err := store.DB.GormClient.Raw(presentSQL, orderID, sel.IngredientID, orderID, sel.IngredientID).Scan(&presentCount).Error; err != nil {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier validate ingredient in order error", 
+			logger.Log.Error("SaveOrderIngredientsWithSupplier validate ingredient error",
 				"order_id", orderID, "ingredient_id", sel.IngredientID, "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		if presentCount == 0 {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not in order", 
+			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not in order",
 				"order_id", orderID, "ingredient_id", sel.IngredientID)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ingredient does not belong to the order: " + sel.IngredientID})
 			return
 		}
 
-		// Check for duplicate ingredient_id in request
 		for j := i + 1; j < len(request.Selections); j++ {
 			if request.Selections[j].IngredientID == sel.IngredientID {
-				logger.Log.Error("SaveOrderIngredientsWithSupplier duplicate ingredient in request", 
-					"ingredient_id", sel.IngredientID)
+				logger.Log.Error("SaveOrderIngredientsWithSupplier duplicate ingredient", "ingredient_id", sel.IngredientID)
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Duplicate ingredient_id in request: " + sel.IngredientID})
 				return
 			}
 		}
 	}
 
-	// Start transaction
 	tx := store.DB.GormClient.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -582,49 +649,40 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		}
 	}()
 
-	// Process each selection - save or update (order_id, ingredient_id) pair
 	var savedSelections []models.OrderIngredientSupplier
 	for _, sel := range request.Selections {
-		// Calculate total cost
 		totalCost := sel.Quantity * sel.UnitPrice
 
-		// Check if selection already exists for this (order_id, ingredient_id) pair
 		var existing models.OrderIngredientSupplier
 		findErr := tx.Where("order_id = ? AND ingredient_id = ?", orderID, sel.IngredientID).First(&existing).Error
 
 		if errors.Is(findErr, gorm.ErrRecordNotFound) {
-			// Create new selection
 			newSelection := models.OrderIngredientSupplier{
-				OrderID:           orderID,
-				IngredientID:      sel.IngredientID,
+				OrderID:            orderID,
+				IngredientID:       sel.IngredientID,
 				SelectedSupplierID: sel.SelectedSupplierID,
-				SelectedProductID: sel.SelectedProductID,
-				Quantity:          sel.Quantity,
-				Unit:              sel.Unit,
-				UnitPrice:         sel.UnitPrice,
-				TotalCost:         totalCost,
-				SelectedByUserID:  userID,
-				Notes:             sel.Notes,
+				SelectedProductID:  sel.SelectedProductID,
+				Quantity:           sel.Quantity,
+				Unit:               sel.Unit,
+				UnitPrice:          sel.UnitPrice,
+				TotalCost:          totalCost,
+				SelectedByUserID:   userID,
+				Notes:              sel.Notes,
 			}
 
 			if err := tx.Create(&newSelection).Error; err != nil {
-				logger.Log.Error("SaveOrderIngredientsWithSupplier create selection error", 
-					"error", err, "ingredient_id", sel.IngredientID)
+				logger.Log.Error("SaveOrderIngredientsWithSupplier create error", "error", err)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
 			savedSelections = append(savedSelections, newSelection)
-			logger.Log.Info("SaveOrderIngredientsWithSupplier created new selection", 
-				"order_id", orderID, "ingredient_id", sel.IngredientID)
 		} else if findErr != nil {
-			logger.Log.Error("SaveOrderIngredientsWithSupplier find existing selection error", 
-				"error", findErr, "ingredient_id", sel.IngredientID)
+			logger.Log.Error("SaveOrderIngredientsWithSupplier find error", "error", findErr)
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": findErr.Error()})
 			return
 		} else {
-			// Update existing selection
 			existing.SelectedSupplierID = sel.SelectedSupplierID
 			existing.SelectedProductID = sel.SelectedProductID
 			existing.Quantity = sel.Quantity
@@ -635,26 +693,21 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 			existing.Notes = sel.Notes
 
 			if err := tx.Save(&existing).Error; err != nil {
-				logger.Log.Error("SaveOrderIngredientsWithSupplier update selection error", 
-					"error", err, "ingredient_id", sel.IngredientID)
+				logger.Log.Error("SaveOrderIngredientsWithSupplier update error", "error", err)
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
 			savedSelections = append(savedSelections, existing)
-			logger.Log.Info("SaveOrderIngredientsWithSupplier updated existing selection", 
-				"order_id", orderID, "ingredient_id", sel.IngredientID)
 		}
 	}
 
-	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		logger.Log.Error("SaveOrderIngredientsWithSupplier commit error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Reload selections with relations for response
 	var responseSelections []models.OrderIngredientSupplier
 	if err := store.DB.GormClient.
 		Preload("Ingredient").
@@ -664,20 +717,17 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		Where("order_id = ?", orderID).
 		Find(&responseSelections).Error; err != nil {
 		logger.Log.Error("SaveOrderIngredientsWithSupplier reload error", "error", err)
-		// Don't fail the request, just return what we saved
 		responseSelections = savedSelections
 	}
 
-	// Return success response
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "Supplier selections saved successfully",
-		"orderId":   orderID,
+		"message":    "Supplier selections saved successfully",
+		"orderId":    orderID,
 		"selections": responseSelections,
-		"count":     len(savedSelections),
+		"count":      len(savedSelections),
 	})
 }
 
-// convertOrderToDTO maps model to DTO
 func convertOrderToDTO(o *models.Order, includeChildren bool) models.OrderDTO {
 	dto := models.OrderDTO{
 		OrderID:         o.OrderID,
