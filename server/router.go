@@ -174,8 +174,51 @@ func SetupRouter() *gin.Engine {
 		// Best supplier selection - returns data to frontend only
 		api.GET("/orders/:id/best-suppliers", handler.GetBestSuppliersForOrder)
 		api.POST("/orders/best-suppliers", handler.GetBestSuppliersForIngredients)
-	}
 
+		// Initialize inventory handlers
+		stockHandler := handler.NewInventoryStockHandler(store.DB.GormClient)
+		importHandler := handler.NewInventoryImportHandler(store.DB.GormClient)
+		exportHandler := handler.NewInventoryExportHandler(store.DB.GormClient)
+
+		// Inventory routes group
+		inventory := api.Group("/inventory")
+		{
+			// Stock management
+			stock := inventory.Group("/stocks")
+			{
+				stock.GET("", stockHandler.GetAllStocks)                         // GET /api/inventory/stocks?kitchen_id=K001&page=1&limit=50
+				stock.GET("/:id", stockHandler.GetStockByID)                     // GET /api/inventory/stocks/1
+				stock.GET("/query", stockHandler.GetStockByKitchenAndIngredient) // GET /api/inventory/stocks/query?kitchen_id=K001&ingredient_id=NL001
+				stock.PUT("/:id/levels", stockHandler.UpdateStockLevels)         // PUT /api/inventory/stocks/1/levels
+				stock.GET("/alerts/low", stockHandler.GetLowStockAlerts)         // GET /api/inventory/stocks/alerts/low?kitchen_id=K001
+				stock.GET("/transactions", stockHandler.GetStockTransactions)    // GET /api/inventory/stocks/transactions?kitchen_id=K001&ingredient_id=NL001
+				stock.GET("/summary", stockHandler.GetStockSummary)              // GET /api/inventory/stocks/summary?kitchen_id=K001
+				stock.GET("/valuation", stockHandler.GetStockValuation)          // GET /api/inventory/stocks/valuation?kitchen_id=K001
+			}
+
+			// Import management
+			imports := inventory.Group("/imports")
+			{
+				imports.GET("", importHandler.GetAllImports)              // GET /api/inventory/imports?kitchen_id=K001&status=draft
+				imports.GET("/:id", importHandler.GetImportByID)          // GET /api/inventory/imports/IM20240520-12345
+				imports.POST("", importHandler.CreateImport)              // POST /api/inventory/imports
+				imports.PUT("/:id", importHandler.UpdateImport)           // PUT /api/inventory/imports/IM20240520-12345
+				imports.POST("/:id/approve", importHandler.ApproveImport) // POST /api/inventory/imports/IM20240520-12345/approve
+				imports.DELETE("/:id", importHandler.DeleteImport)        // DELETE /api/inventory/imports/IM20240520-12345
+			}
+
+			// Export management
+			exports := inventory.Group("/exports")
+			{
+				exports.GET("", exportHandler.GetAllExports)              // GET /api/inventory/exports?kitchen_id=K001&export_type=production
+				exports.GET("/:id", exportHandler.GetExportByID)          // GET /api/inventory/exports/EX20240520-12345
+				exports.POST("", exportHandler.CreateExport)              // POST /api/inventory/exports
+				exports.PUT("/:id", exportHandler.UpdateExport)           // PUT /api/inventory/exports/EX20240520-12345
+				exports.POST("/:id/approve", exportHandler.ApproveExport) // POST /api/inventory/exports/EX20240520-12345/approve
+				exports.DELETE("/:id", exportHandler.DeleteExport)        // DELETE /api/inventory/exports/EX20240520-12345
+			}
+		}
+	}
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})

@@ -1,3 +1,7617 @@
+# ProjectDump Analysis
+
+**Generated on:** 2025-11-24 02:27:32
+**Project Path:** .
+
+## Project Summary
+
+- **Primary Language:** Go
+- **Total Files:** 41
+- **Processed Files:** 41
+- **Project Size:** 402.97 KB
+
+## Detected Technologies
+
+### Go (100.0% confidence)
+*Go programming language*
+
+**Related files:**
+- auth/ginauth.go
+- be.md
+- cmd/main.go
+- db/db.sql
+- db/migrate_order_id_to_string.sql
+- ... and 30 more files
+
+### JavaScript (100.0% confidence)
+*JavaScript runtime and ecosystem*
+
+**Related files:**
+- auth/ginauth.go
+- be.md
+- cmd/main.go
+- handler/dish.go
+- handler/dish_test.go
+- ... and 24 more files
+
+### Docker (100.0% confidence)
+*Docker containerization platform*
+
+**Related files:**
+- Adong Food Management API - Complete.postman_collection.json
+- Dockerfile
+- be.md
+- db/db.sql
+- db/migrate_order_id_to_string.sql
+- ... and 9 more files
+
+### Python (100.0% confidence)
+*Python programming language*
+
+**Related files:**
+- Adong Food Management API - Complete.postman_collection.json
+- Dockerfile
+- auth/ginauth.go
+- be.md
+- cmd/main.go
+- ... and 30 more files
+
+### CSS (100.0% confidence)
+*Cascading Style Sheets*
+
+**Related files:**
+- Adong Food Management API - Complete.postman_collection.json
+- Dockerfile
+- auth/ginauth.go
+- be.md
+- cmd/main.go
+- ... and 31 more files
+
+### Java (100.0% confidence)
+*Java programming language*
+
+**Related files:**
+- auth/ginauth.go
+- be.md
+- cmd/main.go
+- handler/dish.go
+- handler/dish_test.go
+- ... and 26 more files
+
+### TypeScript (100.0% confidence)
+*TypeScript - JavaScript with static typing*
+
+**Related files:**
+- auth/ginauth.go
+- be.md
+- db/db.sql
+- db/migrate_order_id_to_string.sql
+- go.mod
+- ... and 20 more files
+
+### Ruby (80.0% confidence)
+*Ruby programming language*
+
+**Related files:**
+- .gitignore
+- Adong Food Management API - Complete.postman_collection.json
+- README.md
+- be.md
+- db/db.sql
+- ... and 11 more files
+
+### Rust (40.0% confidence)
+*Rust systems programming language*
+
+**Related files:**
+- Dockerfile
+- be.md
+- db/migrate_order_id_to_string.sql
+- db/samples.sql
+- go.mod
+- ... and 3 more files
+
+### PHP (20.0% confidence)
+*PHP server-side scripting language*
+
+**Related files:**
+- Adong Food Management API - Complete.postman_collection.json
+- be.md
+- handler/supplier.go
+- handler/supplier_price.go
+
+### C (15.0% confidence)
+*C programming language*
+
+**Related files:**
+- be.md
+- cmd/main.go
+- utils/search.go
+
+## Directory Structure
+
+```
+├── .env
+├── .gitignore
+├── Adong Food Management API - Complete.postman_collection.json
+├── Dockerfile
+├── README.md
+├── auth
+│   └── ginauth.go
+├── be.md
+├── cmd
+│   └── main.go
+├── db
+│   ├── db.sql
+│   ├── migrate_order_id_to_string.sql
+│   └── samples.sql
+├── go.mod
+├── go.sum
+├── handler
+│   ├── dish.go
+│   ├── dish_test.go
+│   ├── ingredient.go
+│   ├── kitchen.go
+│   ├── order.go
+│   ├── recipe_standard.go
+│   ├── supplier.go
+│   ├── supplier_price.go
+│   └── user.go
+├── logger
+│   └── logger.go
+├── models
+│   ├── common.go
+│   ├── dish.go
+│   ├── ingredient.go
+│   ├── kitchen.go
+│   ├── order.go
+│   ├── order_dto.go
+│   ├── pagination.go
+│   ├── recipe_standard.go
+│   ├── recipe_standard_dto.go
+│   ├── supplier.go
+│   ├── supplier_price.go
+│   ├── supplier_price_dto.go
+│   ├── token.go
+│   └── user.go
+├── server
+│   └── router.go
+├── store
+│   ├── gorm.go
+│   └── token.go
+└── utils
+    └── search.go
+```
+
+## Source Code
+
+### auth/
+
+#### auth/ginauth.go
+*Language: Go | Size: 399 bytes*
+
+```go
+package auth
+
+import (
+	"time"
+
+	"github.com/hsdfat/go-auth-middleware/core"
+)
+
+// Enhanced UserProvider interface
+type UserProvider interface {
+	GetUserByUsername(username string) (*core.User, error)
+	GetUserByID(userID int) (*core.User, error)
+	GetUserByEmail(email string) (*core.User, error)
+	UpdateUserLastLogin(userID int, lastLogin time.Time) error
+	IsUserActive(userID int) (bool, error)
+}
+
+```
+
+### cmd/
+
+#### cmd/main.go
+*Language: Go | Size: 908 bytes*
+
+```go
+package main
+
+import (
+	"adong-be/server"
+	"adong-be/store"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+
+func main() {
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
+
+	// Initialize database
+	var err error
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = "host=localhost user=adong password=adong123 dbname=adongfood port=5432 sslmode=disable"
+	}
+
+	store.DB.GormClient, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	log.Println("Database connected successfully")
+	s := server.SetupRouter() 
+	// Start server
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "18080"
+	}
+
+	log.Printf("Server starting on port %s", port)
+	if err := s.Run(":" + port); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
+}
+```
+
+### db/
+
+#### db/db.sql
+*Language: SQL | Size: 20509 bytes*
+
+```sql
+-- This script was generated by the ERD tool in pgAdmin 4.
+-- Please log an issue at https://github.com/pgadmin-org/pgadmin4/issues/new/choose if you find any bugs, including reproduction steps.
+BEGIN;
+
+
+CREATE TABLE IF NOT EXISTS public.auth_token_pairs
+(
+    session_id character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    access_token character varying(1000) COLLATE pg_catalog."default" NOT NULL,
+    refresh_token character varying(1000) COLLATE pg_catalog."default" NOT NULL,
+    access_expires_at timestamp without time zone NOT NULL,
+    refresh_expires_at timestamp without time zone NOT NULL,
+    user_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    last_activity timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT auth_token_pairs_pkey PRIMARY KEY (session_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.auth_user_sessions
+(
+    session_id character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    user_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ip_address character varying(45) COLLATE pg_catalog."default",
+    user_agent text COLLATE pg_catalog."default",
+    last_activity timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_active boolean NOT NULL DEFAULT true,
+    login_time timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    logout_time timestamp without time zone,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT auth_user_sessions_pkey PRIMARY KEY (session_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.dish_recipe_standards
+(
+    recipe_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    dish_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    quantity_per_serving numeric(10, 4) NOT NULL,
+    notes text COLLATE pg_catalog."default",
+    cost numeric(15, 2),
+    updated_by_user_id character varying(50) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT dish_recipe_standards_pkey PRIMARY KEY (recipe_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.ingredient_types
+(
+    ingredient_type_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_type_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default",
+    active boolean NOT NULL DEFAULT true,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ingredient_types_pkey PRIMARY KEY (ingredient_type_id),
+    CONSTRAINT ingredient_types_name_key UNIQUE (ingredient_type_name)
+);
+
+CREATE TABLE IF NOT EXISTS public.kitchen_favorite_suppliers
+(
+    favorite_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    supplier_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    notes text COLLATE pg_catalog."default",
+    display_order integer,
+    created_by_user_id character varying(50) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT kitchen_favorite_suppliers_pkey PRIMARY KEY (favorite_id),
+    CONSTRAINT uq_kitchen_supplier_favorite UNIQUE (kitchen_id, supplier_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.master_dishes
+(
+    dish_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    dish_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    cooking_method character varying(100) COLLATE pg_catalog."default",
+    category character varying(100) COLLATE pg_catalog."default",
+    description text COLLATE pg_catalog."default",
+    active boolean NOT NULL DEFAULT true,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT master_dishes_pkey PRIMARY KEY (dish_id),
+    CONSTRAINT master_dishes_dish_name_key UNIQUE (dish_name)
+);
+
+CREATE TABLE IF NOT EXISTS public.master_ingredients
+(
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_type_id character varying(50) COLLATE pg_catalog."default",
+    properties character varying(100) COLLATE pg_catalog."default",
+    material_group character varying(100) COLLATE pg_catalog."default",
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT master_ingredients_pkey PRIMARY KEY (ingredient_id),
+    CONSTRAINT master_ingredients_ingredient_name_key UNIQUE (ingredient_name)
+);
+
+CREATE TABLE IF NOT EXISTS public.master_kitchens
+(
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    kitchen_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    address text COLLATE pg_catalog."default",
+    phone character varying(20) COLLATE pg_catalog."default",
+    active boolean NOT NULL DEFAULT true,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT master_kitchens_pkey PRIMARY KEY (kitchen_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.master_suppliers
+(
+    supplier_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    supplier_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    zalo_link text COLLATE pg_catalog."default",
+    address text COLLATE pg_catalog."default",
+    phone character varying(20) COLLATE pg_catalog."default",
+    email character varying(255) COLLATE pg_catalog."default",
+    active boolean NOT NULL DEFAULT true,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT master_suppliers_pkey PRIMARY KEY (supplier_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.master_users
+(
+    user_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    user_name character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    password character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    full_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    role character varying(50) COLLATE pg_catalog."default",
+    kitchen_id character varying(50) COLLATE pg_catalog."default",
+    email character varying(255) COLLATE pg_catalog."default",
+    phone character varying(20) COLLATE pg_catalog."default",
+    active boolean NOT NULL DEFAULT true,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT master_users_pkey PRIMARY KEY (user_id),
+    CONSTRAINT master_users_user_name_key UNIQUE (user_name)
+);
+
+CREATE TABLE IF NOT EXISTS public.order_details
+(
+    order_detail_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    order_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    dish_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    portions integer NOT NULL,
+    note text COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT order_details_pkey PRIMARY KEY (order_detail_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.order_ingredient_suppliers
+(
+    order_ingredient_supplier_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    order_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    selected_supplier_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    selected_product_id integer NOT NULL,
+    quantity numeric(15, 4) NOT NULL,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    unit_price numeric(15, 2) NOT NULL,
+    total_cost numeric(15, 2) NOT NULL,
+    selection_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    selected_by_user_id character varying(50) COLLATE pg_catalog."default",
+    notes text COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT order_ingredient_suppliers_pkey PRIMARY KEY (order_ingredient_supplier_id),
+    CONSTRAINT uq_order_ingredient_supplier UNIQUE (order_id, ingredient_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.order_ingredients
+(
+    order_ingredient_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    order_detail_id integer NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    quantity numeric(15, 4) NOT NULL,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    standard_per_portion numeric(10, 4),
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT order_ingredients_pkey PRIMARY KEY (order_ingredient_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.order_supplementary_foods
+(
+    supplementary_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    order_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    quantity numeric(15, 4) NOT NULL,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    standard_per_portion numeric(10, 4),
+    portions integer,
+    note text COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT order_supplementary_foods_pkey PRIMARY KEY (supplementary_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.orders
+(
+    order_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    order_date date NOT NULL,
+    note text COLLATE pg_catalog."default",
+    status character varying(50) COLLATE pg_catalog."default" NOT NULL DEFAULT 'Pending'::character varying,
+    created_by_user_id character varying(50) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT orders_pkey PRIMARY KEY (order_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.supplier_price_list
+(
+    product_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    product_name character varying(255) COLLATE pg_catalog."default",
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    classification character varying(100) COLLATE pg_catalog."default",
+    supplier_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    manufacturer_name character varying(255) COLLATE pg_catalog."default",
+    unit character varying(50) COLLATE pg_catalog."default",
+    specification character varying(100) COLLATE pg_catalog."default",
+    unit_price numeric(15, 2) NOT NULL,
+    price_per_item numeric(15, 2),
+    effective_from timestamp without time zone,
+    effective_to timestamp without time zone,
+    active boolean NOT NULL DEFAULT true,
+    new_buying_price numeric(15, 2),
+    promotion character(1) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT supplier_price_list_pkey PRIMARY KEY (product_id)
+);
+
+ALTER TABLE IF EXISTS public.auth_token_pairs
+    ADD CONSTRAINT fk_token_user FOREIGN KEY (user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_token_user
+    ON public.auth_token_pairs(user_id);
+
+
+ALTER TABLE IF EXISTS public.auth_user_sessions
+    ADD CONSTRAINT fk_session_user FOREIGN KEY (user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_session_user
+    ON public.auth_user_sessions(user_id);
+
+
+ALTER TABLE IF EXISTS public.dish_recipe_standards
+    ADD CONSTRAINT fk_recipe_dish FOREIGN KEY (dish_id)
+    REFERENCES public.master_dishes (dish_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_recipe_dish
+    ON public.dish_recipe_standards(dish_id);
+
+
+ALTER TABLE IF EXISTS public.dish_recipe_standards
+    ADD CONSTRAINT fk_recipe_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_recipe_ingredient
+    ON public.dish_recipe_standards(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.dish_recipe_standards
+    ADD CONSTRAINT fk_recipe_user FOREIGN KEY (updated_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.kitchen_favorite_suppliers
+    ADD CONSTRAINT fk_favorite_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_favorite_kitchen
+    ON public.kitchen_favorite_suppliers(kitchen_id);
+
+
+ALTER TABLE IF EXISTS public.kitchen_favorite_suppliers
+    ADD CONSTRAINT fk_favorite_supplier FOREIGN KEY (supplier_id)
+    REFERENCES public.master_suppliers (supplier_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_favorite_supplier
+    ON public.kitchen_favorite_suppliers(supplier_id);
+
+
+ALTER TABLE IF EXISTS public.kitchen_favorite_suppliers
+    ADD CONSTRAINT fk_favorite_user FOREIGN KEY (created_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.master_ingredients
+    ADD CONSTRAINT fk_ingredient_type FOREIGN KEY (ingredient_type_id)
+    REFERENCES public.ingredient_types (ingredient_type_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.master_users
+    ADD CONSTRAINT fk_users_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.order_details
+    ADD CONSTRAINT fk_detail_dish FOREIGN KEY (dish_id)
+    REFERENCES public.master_dishes (dish_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_order_details_dish
+    ON public.order_details(dish_id);
+
+
+ALTER TABLE IF EXISTS public.order_details
+    ADD CONSTRAINT fk_detail_order FOREIGN KEY (order_id)
+    REFERENCES public.orders (order_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_order_details_order
+    ON public.order_details(order_id);
+
+
+ALTER TABLE IF EXISTS public.order_ingredient_suppliers
+    ADD CONSTRAINT fk_ois_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_ois_ingredient
+    ON public.order_ingredient_suppliers(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.order_ingredient_suppliers
+    ADD CONSTRAINT fk_ois_order FOREIGN KEY (order_id)
+    REFERENCES public.orders (order_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_ois_order
+    ON public.order_ingredient_suppliers(order_id);
+
+
+ALTER TABLE IF EXISTS public.order_ingredient_suppliers
+    ADD CONSTRAINT fk_ois_product FOREIGN KEY (selected_product_id)
+    REFERENCES public.supplier_price_list (product_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_ois_product
+    ON public.order_ingredient_suppliers(selected_product_id);
+
+
+ALTER TABLE IF EXISTS public.order_ingredient_suppliers
+    ADD CONSTRAINT fk_ois_supplier FOREIGN KEY (selected_supplier_id)
+    REFERENCES public.master_suppliers (supplier_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_ois_supplier
+    ON public.order_ingredient_suppliers(selected_supplier_id);
+
+
+ALTER TABLE IF EXISTS public.order_ingredient_suppliers
+    ADD CONSTRAINT fk_ois_user FOREIGN KEY (selected_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.order_ingredients
+    ADD CONSTRAINT fk_order_ing_detail FOREIGN KEY (order_detail_id)
+    REFERENCES public.order_details (order_detail_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_order_ing_detail
+    ON public.order_ingredients(order_detail_id);
+
+
+ALTER TABLE IF EXISTS public.order_ingredients
+    ADD CONSTRAINT fk_order_ing_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_order_ing_ingredient
+    ON public.order_ingredients(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.order_supplementary_foods
+    ADD CONSTRAINT fk_supp_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_supplementary_ingredient
+    ON public.order_supplementary_foods(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.order_supplementary_foods
+    ADD CONSTRAINT fk_supp_order FOREIGN KEY (order_id)
+    REFERENCES public.orders (order_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_supplementary_order
+    ON public.order_supplementary_foods(order_id);
+
+
+ALTER TABLE IF EXISTS public.orders
+    ADD CONSTRAINT fk_order_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_orders_kitchen
+    ON public.orders(kitchen_id);
+
+
+ALTER TABLE IF EXISTS public.orders
+    ADD CONSTRAINT fk_order_user FOREIGN KEY (created_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.supplier_price_list
+    ADD CONSTRAINT fk_price_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_supplier_price_ingredient
+    ON public.supplier_price_list(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.supplier_price_list
+    ADD CONSTRAINT fk_price_supplier FOREIGN KEY (supplier_id)
+    REFERENCES public.master_suppliers (supplier_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_supplier_price_supplier
+    ON public.supplier_price_list(supplier_id);
+
+END;
+```
+
+#### db/migrate_order_id_to_string.sql
+*Language: SQL | Size: 5270 bytes*
+
+```sql
+-- =========================================================
+-- MIGRATION: Change order_id from INTEGER to VARCHAR(50)
+-- =========================================================
+-- This script converts the order_id column from INTEGER to VARCHAR(50)
+-- and migrates all existing records and foreign key relationships.
+
+BEGIN;
+
+-- Step 1: Drop all foreign key constraints that reference orders.order_id
+-- This is necessary before we can change the column type
+
+ALTER TABLE IF EXISTS public.order_details 
+    DROP CONSTRAINT IF EXISTS fk_detail_order;
+
+ALTER TABLE IF EXISTS public.order_supplementary_foods 
+    DROP CONSTRAINT IF EXISTS fk_supp_order;
+
+ALTER TABLE IF EXISTS public.supplier_requests 
+    DROP CONSTRAINT IF EXISTS fk_req_order;
+
+-- Step 2: Change column types to VARCHAR(50) in all foreign key tables first
+-- PostgreSQL will automatically convert INTEGER to TEXT/VARCHAR during type change
+ALTER TABLE public.order_details 
+    ALTER COLUMN order_id TYPE VARCHAR(50) USING CAST(order_id AS VARCHAR(50));
+
+ALTER TABLE public.order_supplementary_foods 
+    ALTER COLUMN order_id TYPE VARCHAR(50) USING CAST(order_id AS VARCHAR(50));
+
+ALTER TABLE public.supplier_requests 
+    ALTER COLUMN order_id TYPE VARCHAR(50) USING CAST(order_id AS VARCHAR(50));
+
+-- Step 3: Change the primary key column in orders table
+-- Since we can't directly change an IDENTITY column, we'll:
+-- 1. Create a new VARCHAR column
+-- 2. Copy data (convert integer IDs to strings)
+-- 3. Drop old column and constraints
+-- 4. Rename new column
+
+-- Add new column for order_id as VARCHAR
+ALTER TABLE public.orders 
+    ADD COLUMN order_id_new VARCHAR(50);
+
+-- Convert existing integer IDs to strings
+UPDATE public.orders 
+SET order_id_new = CAST(order_id AS VARCHAR(50));
+
+-- Make sure the new column is NOT NULL
+ALTER TABLE public.orders 
+    ALTER COLUMN order_id_new SET NOT NULL;
+
+-- Step 4: Update all foreign key references to use the new string column
+-- At this point, FK columns are already VARCHAR, so we can match by string value
+UPDATE public.order_details od
+SET order_id = o.order_id_new
+FROM public.orders o
+WHERE od.order_id = CAST(o.order_id AS VARCHAR(50));
+
+UPDATE public.order_supplementary_foods osf
+SET order_id = o.order_id_new
+FROM public.orders o
+WHERE osf.order_id = CAST(o.order_id AS VARCHAR(50));
+
+UPDATE public.supplier_requests sr
+SET order_id = o.order_id_new
+FROM public.orders o
+WHERE sr.order_id = CAST(o.order_id AS VARCHAR(50));
+
+-- Step 5: Drop the old order_id column and rename the new one
+-- First drop the primary key constraint
+ALTER TABLE public.orders 
+    DROP CONSTRAINT IF EXISTS orders_pkey;
+
+-- Drop the old order_id column
+ALTER TABLE public.orders 
+    DROP COLUMN order_id;
+
+-- Rename the new column to order_id
+ALTER TABLE public.orders 
+    RENAME COLUMN order_id_new TO order_id;
+
+-- Add primary key constraint on the new order_id column
+ALTER TABLE public.orders 
+    ADD PRIMARY KEY (order_id);
+
+-- Step 7: Recreate all foreign key constraints
+ALTER TABLE public.order_details 
+    ADD CONSTRAINT fk_detail_order 
+    FOREIGN KEY (order_id) 
+    REFERENCES public.orders(order_id) 
+    ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE public.order_supplementary_foods 
+    ADD CONSTRAINT fk_supp_order 
+    FOREIGN KEY (order_id) 
+    REFERENCES public.orders(order_id) 
+    ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE public.supplier_requests 
+    ADD CONSTRAINT fk_req_order 
+    FOREIGN KEY (order_id) 
+    REFERENCES public.orders(order_id) 
+    ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- Step 8: Recreate indexes (they should still exist, but ensure they're correct)
+CREATE INDEX IF NOT EXISTS idx_order_details_order ON public.order_details (order_id);
+CREATE INDEX IF NOT EXISTS idx_supplementary_order ON public.order_supplementary_foods (order_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_requests_order ON public.supplier_requests (order_id);
+
+COMMIT;
+
+-- =========================================================
+-- VERIFICATION QUERIES (run these after migration to verify)
+-- =========================================================
+-- 
+-- SELECT 'orders' as table_name, COUNT(*) as total_rows, 
+--        COUNT(DISTINCT order_id) as unique_ids,
+--        MIN(order_id) as min_id, MAX(order_id) as max_id
+-- FROM public.orders
+-- UNION ALL
+-- SELECT 'order_details', COUNT(*), COUNT(DISTINCT order_id), MIN(order_id), MAX(order_id)
+-- FROM public.order_details
+-- UNION ALL
+-- SELECT 'order_supplementary_foods', COUNT(*), COUNT(DISTINCT order_id), MIN(order_id), MAX(order_id)
+-- FROM public.order_supplementary_foods
+-- UNION ALL
+-- SELECT 'supplier_requests', COUNT(*), COUNT(DISTINCT order_id), MIN(order_id), MAX(order_id)
+-- FROM public.supplier_requests;
+--
+-- -- Check foreign key integrity
+-- SELECT COUNT(*) as orphaned_details
+-- FROM public.order_details od
+-- LEFT JOIN public.orders o ON od.order_id = o.order_id
+-- WHERE o.order_id IS NULL;
+--
+-- SELECT COUNT(*) as orphaned_supplementary
+-- FROM public.order_supplementary_foods osf
+-- LEFT JOIN public.orders o ON osf.order_id = o.order_id
+-- WHERE o.order_id IS NULL;
+--
+-- SELECT COUNT(*) as orphaned_requests
+-- FROM public.supplier_requests sr
+-- LEFT JOIN public.orders o ON sr.order_id = o.order_id
+-- WHERE o.order_id IS NULL;
+
+```
+
+#### db/samples.sql
+*Language: SQL | Size: 30031 bytes*
+
+```sql
+-- ============================================================================
+-- SAMPLE DATA FOR ADONG FOOD MANAGEMENT SYSTEM
+-- ============================================================================
+-- This file contains comprehensive sample data for testing and demonstration
+-- Includes: 25 ingredients, 15 dishes, 7 suppliers, 3 kitchens, users, recipes, and orders
+-- ============================================================================
+
+BEGIN;
+
+-- ============================================================================
+-- INGREDIENT TYPES
+-- ============================================================================
+INSERT INTO public.ingredient_types (ingredient_type_id, ingredient_type_name, description, active) VALUES
+('MEAT', 'Thịt', 'Các loại thịt động vật', true),
+('SEAFOOD', 'Hải sản', 'Các loại hải sản tươi sống', true),
+('VEGETABLE', 'Rau củ', 'Rau và củ quả tươi', true),
+('SPICE', 'Gia vị', 'Các loại gia vị và hương liệu', true),
+('GRAIN', 'Ngũ cốc', 'Gạo, bột và ngũ cốc', true),
+('DAIRY', 'Sữa và trứng', 'Các sản phẩm từ sữa và trứng', true),
+('OIL', 'Dầu mỡ', 'Các loại dầu ăn và mỡ', true);
+
+-- ============================================================================
+-- MASTER INGREDIENTS (25 ingredients)
+-- ============================================================================
+INSERT INTO public.master_ingredients (ingredient_id, ingredient_name, ingredient_type_id, properties, material_group, unit) VALUES
+-- Thịt (5 items)
+('ING001', 'Thịt heo ba chỉ', 'MEAT', 'Tươi', 'Thịt heo', 'kg'),
+('ING002', 'Thịt bò bắp', 'MEAT', 'Tươi', 'Thịt bò', 'kg'),
+('ING003', 'Thịt gà ta', 'MEAT', 'Tươi', 'Thịt gia cầm', 'kg'),
+('ING004', 'Sườn heo', 'MEAT', 'Tươi', 'Thịt heo', 'kg'),
+('ING005', 'Thịt vịt', 'MEAT', 'Tươi', 'Thịt gia cầm', 'kg'),
+
+-- Hải sản (5 items)
+('ING006', 'Tôm sú', 'SEAFOOD', 'Tươi sống', 'Giáp xác', 'kg'),
+('ING007', 'Cá lóc', 'SEAFOOD', 'Tươi sống', 'Cá nước ngọt', 'kg'),
+('ING008', 'Mực ống', 'SEAFOOD', 'Tươi', 'Động vật thân mềm', 'kg'),
+('ING009', 'Nghêu', 'SEAFOOD', 'Tươi sống', 'Động vật có vỏ', 'kg'),
+('ING010', 'Cá basa', 'SEAFOOD', 'Tươi', 'Cá nước ngọt', 'kg'),
+
+-- Rau củ (6 items)
+('ING011', 'Cà chua', 'VEGETABLE', 'Tươi', 'Củ quả', 'kg'),
+('ING012', 'Hành tây', 'VEGETABLE', 'Tươi', 'Củ', 'kg'),
+('ING013', 'Khoai tây', 'VEGETABLE', 'Tươi', 'Củ', 'kg'),
+('ING014', 'Rau muống', 'VEGETABLE', 'Tươi', 'Rau xanh', 'kg'),
+('ING015', 'Cải bắp', 'VEGETABLE', 'Tươi', 'Rau xanh', 'kg'),
+('ING016', 'Ớt', 'VEGETABLE', 'Tươi', 'Gia vị tươi', 'kg'),
+
+-- Gia vị (4 items)
+('ING017', 'Nước mắm', 'SPICE', 'Đóng chai', 'Nước chấm', 'lít'),
+('ING018', 'Dầu ăn', 'OIL', 'Đóng chai', 'Dầu thực vật', 'lít'),
+('ING019', 'Hạt tiêu', 'SPICE', 'Khô', 'Gia vị khô', 'kg'),
+('ING020', 'Muối', 'SPICE', 'Khô', 'Gia vị cơ bản', 'kg'),
+
+-- Ngũ cốc (3 items)
+('ING021', 'Gạo tẻ', 'GRAIN', 'Khô', 'Gạo', 'kg'),
+('ING022', 'Bún tươi', 'GRAIN', 'Tươi', 'Bún phở', 'kg'),
+('ING023', 'Bánh phở', 'GRAIN', 'Tươi', 'Bún phở', 'kg'),
+
+-- Sữa và trứng (2 items)
+('ING024', 'Trứng gà', 'DAIRY', 'Tươi', 'Trứng', 'quả'),
+('ING025', 'Sữa tươi', 'DAIRY', 'Tươi', 'Sữa', 'lít');
+
+-- ============================================================================
+-- MASTER KITCHENS (3 kitchens)
+-- ============================================================================
+INSERT INTO public.master_kitchens (kitchen_id, kitchen_name, address, phone, active) VALUES
+('KIT001', 'Bếp Trung Tâm Á Đông', '123 Đường Lê Lợi, Quận 1, TP.HCM', '0283456789', true),
+('KIT002', 'Bếp Chi Nhánh Quận 7', '456 Đường Nguyễn Văn Linh, Quận 7, TP.HCM', '0287654321', true),
+('KIT003', 'Bếp Chi Nhánh Thủ Đức', '789 Đường Võ Văn Ngân, Thủ Đức, TP.HCM', '0289876543', true);
+
+-- ============================================================================
+-- MASTER USERS (5 users)
+-- ============================================================================
+INSERT INTO public.master_users (user_id, user_name, password, full_name, role, kitchen_id, email, phone, active) VALUES
+('USR001', 'admin', '$2a$10$rF8Z9K1qXJx5yGqL3pQy0.KJhL7vXmZ9F3uY5tKnM8wQxPzN4bC2K', 'Nguyễn Văn An', 'Admin', NULL, 'admin@adongfood.vn', '0901234567', true),
+('USR002', 'chef_k001', '$2a$10$rF8Z9K1qXJx5yGqL3pQy0.KJhL7vXmZ9F3uY5tKnM8wQxPzN4bC2K', 'Trần Thị Bình', 'Chef', 'KIT001', 'binh@adongfood.vn', '0901234568', true),
+('USR003', 'chef_k002', '$2a$10$rF8Z9K1qXJx5yGqL3pQy0.KJhL7vXmZ9F3uY5tKnM8wQxPzN4bC2K', 'Lê Văn Cường', 'Chef', 'KIT002', 'cuong@adongfood.vn', '0901234569', true),
+('USR004', 'manager', '$2a$10$rF8Z9K1qXJx5yGqL3pQy0.KJhL7vXmZ9F3uY5tKnM8wQxPzN4bC2K', 'Phạm Thị Dung', 'Manager', 'KIT001', 'dung@adongfood.vn', '0901234570', true),
+('USR005', 'staff_k003', '$2a$10$rF8Z9K1qXJx5yGqL3pQy0.KJhL7vXmZ9F3uY5tKnM8wQxPzN4bC2K', 'Hoàng Văn Em', 'Staff', 'KIT003', 'em@adongfood.vn', '0901234571', true);
+
+-- Note: All passwords are hashed version of 'password123'
+
+-- ============================================================================
+-- MASTER SUPPLIERS (7 suppliers)
+-- ============================================================================
+INSERT INTO public.master_suppliers (supplier_id, supplier_name, zalo_link, address, phone, email, active) VALUES
+('SUP001', 'Công ty Thực phẩm Sạch Việt', 'https://zalo.me/sachviet', '45 Đường Bến Vân Đồn, Quận 4, TP.HCM', '0283567890', 'sachviet@gmail.com', true),
+('SUP002', 'Nhà cung cấp Hải sản Tươi Sống', 'https://zalo.me/haisantuoisong', '78 Đường Đinh Tiên Hoàng, Quận Bình Thạnh, TP.HCM', '0287890123', 'haisantuoi@gmail.com', true),
+('SUP003', 'Cửa hàng Rau Củ Đà Lạt', 'https://zalo.me/raucudalat', '123 Đường Lý Thường Kiệt, Quận 10, TP.HCM', '0289012345', 'raudalat@gmail.com', true),
+('SUP004', 'Công ty Gia vị Việt Nam', 'https://zalo.me/giavivietnam', '567 Đường Nguyễn Tri Phương, Quận 5, TP.HCM', '0281234567', 'giavi@gmail.com', true),
+('SUP005', 'Nhà phân phối Thịt Sạch An Toàn', 'https://zalo.me/thitsach', '234 Đường Võ Thị Sáu, Quận 3, TP.HCM', '0283456123', 'thitsach@gmail.com', true),
+('SUP006', 'Cửa hàng Gạo Đồng Tháp', 'https://zalo.me/gaodongthap', '890 Đường Lê Hồng Phong, Quận 10, TP.HCM', '0287891234', 'gaodongthap@gmail.com', true),
+('SUP007', 'Công ty Dầu Ăn Cao Cấp', 'https://zalo.me/dauan', '345 Đường Trần Hưng Đạo, Quận 1, TP.HCM', '0289012567', 'dauan@gmail.com', true);
+
+-- ============================================================================
+-- MASTER DISHES (15 dishes)
+-- ============================================================================
+INSERT INTO public.master_dishes (dish_id, dish_name, cooking_method, category, description, active) VALUES
+-- Món thịt (5 dishes)
+('DISH001', 'Thịt kho tàu', 'Kho', 'Món mặn', 'Thịt heo ba chỉ kho với trứng, nước dừa và nước mắm', true),
+('DISH002', 'Bò lúc lắc', 'Xào', 'Món mặn', 'Thịt bò bắp cắt khối xào với hành tây và sốt tiêu đen', true),
+('DISH003', 'Gà kho gừng', 'Kho', 'Món mặn', 'Thịt gà kho với gừng và nước mắm đường', true),
+('DISH004', 'Sườn xào chua ngọt', 'Xào', 'Món mặn', 'Sườn heo xào với dứa và cà chua sốt chua ngọt', true),
+('DISH005', 'Vịt nấu chao', 'Nấu', 'Món mặn', 'Thịt vịt nấu với chao và gừng', true),
+
+-- Món hải sản (4 dishes)
+('DISH006', 'Tôm rim', 'Rim', 'Món mặn', 'Tôm sú rim với nước mắm và tiêu', true),
+('DISH007', 'Cá lóc kho tộ', 'Kho', 'Món mặn', 'Cá lóc kho tộ với nước dừa và ớt', true),
+('DISH008', 'Mực xào chua ngọt', 'Xào', 'Món mặn', 'Mực ống xào với dứa và ớt chuông', true),
+('DISH009', 'Nghêu hấp xả', 'Hấp', 'Món mặn', 'Nghêu hấp với sả và ớt', true),
+
+-- Món canh và rau (3 dishes)
+('DISH010', 'Canh chua cá', 'Nấu', 'Canh', 'Canh chua với cá basa, cà chua và rau thơm', true),
+('DISH011', 'Rau muống xào tỏi', 'Xào', 'Rau', 'Rau muống xào với tỏi và nước mắm', true),
+('DISH012', 'Cải bắp xào', 'Xào', 'Rau', 'Cải bắp xào với tỏi và nước mắm', true),
+
+-- Món bún phở (3 dishes)
+('DISH013', 'Bún bò Huế', 'Nấu', 'Bún phở', 'Bún bò với nước dùng cay và thịt bò', true),
+('DISH014', 'Phở bò', 'Nấu', 'Bún phở', 'Phở với nước dùng xương bò và thịt bò', true),
+('DISH015', 'Bún chả', 'Nướng', 'Bún phở', 'Bún với chả nướng và nước mắm chua ngọt', true);
+
+-- ============================================================================
+-- DISH RECIPE STANDARDS (Recipes for all dishes)
+-- ============================================================================
+
+-- DISH001: Thịt kho tàu
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH001', 'ING001', 'kg', 0.2000, 'Thịt ba chỉ cắt miếng vừa', 40000.00, 'USR002'),
+('DISH001', 'ING024', 'quả', 2.0000, 'Trứng luộc chín', 8000.00, 'USR002'),
+('DISH001', 'ING017', 'lít', 0.0500, 'Nước mắm ngon', 2500.00, 'USR002'),
+('DISH001', 'ING020', 'kg', 0.0050, 'Muối hạt', 50.00, 'USR002'),
+('DISH001', 'ING012', 'kg', 0.0500, 'Hành tây thái múi cau', 1500.00, 'USR002');
+
+-- DISH002: Bò lúc lắc
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH002', 'ING002', 'kg', 0.1800, 'Thịt bò bắp cắt khối', 72000.00, 'USR002'),
+('DISH002', 'ING012', 'kg', 0.0800, 'Hành tây thái miếng', 2400.00, 'USR002'),
+('DISH002', 'ING011', 'kg', 0.0500, 'Cà chua bi', 1500.00, 'USR002'),
+('DISH002', 'ING019', 'kg', 0.0020, 'Hạt tiêu đen', 200.00, 'USR002'),
+('DISH002', 'ING018', 'lít', 0.0200, 'Dầu ăn', 600.00, 'USR002');
+
+-- DISH003: Gà kho gừng
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH003', 'ING003', 'kg', 0.2500, 'Thịt gà ta cắt miếng', 50000.00, 'USR002'),
+('DISH003', 'ING017', 'lít', 0.0300, 'Nước mắm', 1500.00, 'USR002'),
+('DISH003', 'ING020', 'kg', 0.0030, 'Muối', 30.00, 'USR002'),
+('DISH003', 'ING018', 'lít', 0.0150, 'Dầu ăn', 450.00, 'USR002');
+
+-- DISH004: Sườn xào chua ngọt
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH004', 'ING004', 'kg', 0.2500, 'Sườn heo cắt miếng', 50000.00, 'USR002'),
+('DISH004', 'ING011', 'kg', 0.1000, 'Cà chua thái múi cau', 3000.00, 'USR002'),
+('DISH004', 'ING012', 'kg', 0.0600, 'Hành tây thái miếng', 1800.00, 'USR002'),
+('DISH004', 'ING016', 'kg', 0.0100, 'Ớt chuông', 300.00, 'USR002'),
+('DISH004', 'ING018', 'lít', 0.0200, 'Dầu ăn', 600.00, 'USR002');
+
+-- DISH005: Vịt nấu chao
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH005', 'ING005', 'kg', 0.3000, 'Thịt vịt cắt miếng', 60000.00, 'USR003'),
+('DISH005', 'ING017', 'lít', 0.0300, 'Nước mắm', 1500.00, 'USR003'),
+('DISH005', 'ING018', 'lít', 0.0200, 'Dầu ăn', 600.00, 'USR003');
+
+-- DISH006: Tôm rim
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH006', 'ING006', 'kg', 0.2000, 'Tôm sú tươi', 100000.00, 'USR002'),
+('DISH006', 'ING017', 'lít', 0.0400, 'Nước mắm', 2000.00, 'USR002'),
+('DISH006', 'ING019', 'kg', 0.0030, 'Hạt tiêu', 300.00, 'USR002'),
+('DISH006', 'ING018', 'lít', 0.0150, 'Dầu ăn', 450.00, 'USR002');
+
+-- DISH007: Cá lóc kho tộ
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH007', 'ING007', 'kg', 0.3000, 'Cá lóc cắt khúc', 90000.00, 'USR002'),
+('DISH007', 'ING017', 'lít', 0.0500, 'Nước mắm', 2500.00, 'USR002'),
+('DISH007', 'ING016', 'kg', 0.0200, 'Ớt cắt khúc', 600.00, 'USR002'),
+('DISH007', 'ING018', 'lít', 0.0200, 'Dầu ăn', 600.00, 'USR002');
+
+-- DISH008: Mực xào chua ngọt
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH008', 'ING008', 'kg', 0.2500, 'Mực ống tươi', 75000.00, 'USR002'),
+('DISH008', 'ING012', 'kg', 0.0700, 'Hành tây', 2100.00, 'USR002'),
+('DISH008', 'ING016', 'kg', 0.0150, 'Ớt chuông', 450.00, 'USR002'),
+('DISH008', 'ING018', 'lít', 0.0200, 'Dầu ăn', 600.00, 'USR002');
+
+-- DISH009: Nghêu hấp xả
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH009', 'ING009', 'kg', 0.3000, 'Nghêu tươi sống', 60000.00, 'USR002'),
+('DISH009', 'ING016', 'kg', 0.0150, 'Ớt cắt lát', 450.00, 'USR002'),
+('DISH009', 'ING017', 'lít', 0.0200, 'Nước mắm', 1000.00, 'USR002');
+
+-- DISH010: Canh chua cá
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH010', 'ING010', 'kg', 0.2000, 'Cá basa cắt khúc', 40000.00, 'USR003'),
+('DISH010', 'ING011', 'kg', 0.1000, 'Cà chua thái múi', 3000.00, 'USR003'),
+('DISH010', 'ING017', 'lít', 0.0300, 'Nước mắm', 1500.00, 'USR003');
+
+-- DISH011: Rau muống xào tỏi
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH011', 'ING014', 'kg', 0.2000, 'Rau muống tươi', 4000.00, 'USR002'),
+('DISH011', 'ING017', 'lít', 0.0150, 'Nước mắm', 750.00, 'USR002'),
+('DISH011', 'ING018', 'lít', 0.0150, 'Dầu ăn', 450.00, 'USR002');
+
+-- DISH012: Cải bắp xào
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH012', 'ING015', 'kg', 0.2000, 'Cải bắp thái sợi', 6000.00, 'USR002'),
+('DISH012', 'ING017', 'lít', 0.0150, 'Nước mắm', 750.00, 'USR002'),
+('DISH012', 'ING018', 'lít', 0.0150, 'Dầu ăn', 450.00, 'USR002');
+
+-- DISH013: Bún bò Huế
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH013', 'ING022', 'kg', 0.2500, 'Bún tươi', 10000.00, 'USR003'),
+('DISH013', 'ING002', 'kg', 0.1500, 'Thịt bò bắp', 60000.00, 'USR003'),
+('DISH013', 'ING017', 'lít', 0.0300, 'Nước mắm', 1500.00, 'USR003'),
+('DISH013', 'ING016', 'kg', 0.0200, 'Ớt', 600.00, 'USR003');
+
+-- DISH014: Phở bò
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH014', 'ING023', 'kg', 0.2500, 'Bánh phở tươi', 10000.00, 'USR003'),
+('DISH014', 'ING002', 'kg', 0.1500, 'Thịt bò bắp', 60000.00, 'USR003'),
+('DISH014', 'ING012', 'kg', 0.0300, 'Hành tây', 900.00, 'USR003'),
+('DISH014', 'ING017', 'lít', 0.0300, 'Nước mắm', 1500.00, 'USR003');
+
+-- DISH015: Bún chả
+INSERT INTO public.dish_recipe_standards (dish_id, ingredient_id, unit, quantity_per_serving, notes, cost, updated_by_user_id) VALUES
+('DISH015', 'ING022', 'kg', 0.2500, 'Bún tươi', 10000.00, 'USR003'),
+('DISH015', 'ING001', 'kg', 0.1500, 'Thịt heo ba chỉ', 30000.00, 'USR003'),
+('DISH015', 'ING017', 'lít', 0.0400, 'Nước mắm', 2000.00, 'USR003'),
+('DISH015', 'ING011', 'kg', 0.0500, 'Cà chua', 1500.00, 'USR003');
+
+-- ============================================================================
+-- SUPPLIER PRICE LIST (Multiple suppliers for each ingredient)
+-- ============================================================================
+-- Note: product_id is auto-increment, so we don't specify it
+
+-- Thịt heo ba chỉ (ING001) - 3 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP001', 'ING001', 'kg', 150000, true),
+('SUP005', 'ING001', 'kg', 145000, true),
+('SUP001', 'ING001', 'kg', 148000, true);
+
+-- Thịt bò bắp (ING002) - 3 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP001', 'ING002', 'kg', 350000, true),
+('SUP005', 'ING002', 'kg', 345000, true),
+('SUP001', 'ING002', 'kg', 355000, true);
+
+-- Thịt gà ta (ING003) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP001', 'ING003', 'kg', 180000, true),
+('SUP005', 'ING003', 'kg', 175000, true);
+
+-- Sườn heo (ING004) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP005', 'ING004', 'kg', 165000, true),
+('SUP001', 'ING004', 'kg', 170000, true);
+
+-- Thịt vịt (ING005) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP005', 'ING005', 'kg', 190000, true),
+('SUP001', 'ING005', 'kg', 195000, true);
+
+-- Tôm sú (ING006) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP002', 'ING006', 'kg', 450000, true),
+('SUP002', 'ING006', 'kg', 460000, true);
+
+-- Cá lóc (ING007) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP002', 'ING007', 'kg', 280000, true),
+('SUP002', 'ING007', 'kg', 285000, true);
+
+-- Mực ống (ING008) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP002', 'ING008', 'kg', 250000, true),
+('SUP002', 'ING008', 'kg', 255000, true);
+
+-- Nghêu (ING009) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP002', 'ING009', 'kg', 180000, true),
+('SUP002', 'ING009', 'kg', 175000, true);
+
+-- Cá basa (ING010) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP002', 'ING010', 'kg', 120000, true),
+('SUP002', 'ING010', 'kg', 115000, true);
+
+-- Cà chua (ING011) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP003', 'ING011', 'kg', 25000, true),
+('SUP003', 'ING011', 'kg', 23000, true);
+
+-- Hành tây (ING012) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP003', 'ING012', 'kg', 28000, true),
+('SUP003', 'ING012', 'kg', 26000, true);
+
+-- Khoai tây (ING013) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP003', 'ING013', 'kg', 22000, true),
+('SUP003', 'ING013', 'kg', 20000, true);
+
+-- Rau muống (ING014) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP003', 'ING014', 'kg', 18000, true),
+('SUP003', 'ING014', 'kg', 17000, true);
+
+-- Cải bắp (ING015) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP003', 'ING015', 'kg', 28000, true),
+('SUP003', 'ING015', 'kg', 26000, true);
+
+-- Ớt (ING016) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP003', 'ING016', 'kg', 35000, true),
+('SUP004', 'ING016', 'kg', 33000, true);
+
+-- Nước mắm (ING017) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP004', 'ING017', 'lít', 45000, true),
+('SUP004', 'ING017', 'lít', 43000, true);
+
+-- Dầu ăn (ING018) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP007', 'ING018', 'lít', 35000, true),
+('SUP004', 'ING018', 'lít', 33000, true);
+
+-- Hạt tiêu (ING019) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP004', 'ING019', 'kg', 180000, true),
+('SUP004', 'ING019', 'kg', 175000, true);
+
+-- Muối (ING020) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP004', 'ING020', 'kg', 8000, true),
+('SUP004', 'ING020', 'kg', 7500, true);
+
+-- Gạo tẻ (ING021) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP006', 'ING021', 'kg', 22000, true),
+('SUP006', 'ING021', 'kg', 21000, true);
+
+-- Bún tươi (ING022) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP006', 'ING022', 'kg', 18000, true),
+('SUP006', 'ING022', 'kg', 17000, true);
+
+-- Bánh phở (ING023) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP006', 'ING023', 'kg', 18000, true),
+('SUP006', 'ING023', 'kg', 17500, true);
+
+-- Trứng gà (ING024) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP001', 'ING024', 'quả', 3500, true),
+('SUP005', 'ING024', 'quả', 3300, true);
+
+-- Sữa tươi (ING025) - 2 suppliers
+INSERT INTO public.supplier_price_list (supplier_id, ingredient_id, unit, unit_price, active) VALUES
+('SUP001', 'ING025', 'lít', 35000, true),
+('SUP005', 'ING025', 'lít', 33000, true);
+
+-- ============================================================================
+-- KITCHEN FAVORITE SUPPLIERS
+-- ============================================================================
+-- Note: kitchen_favorite_suppliers table does NOT have ingredient_id column
+INSERT INTO public.kitchen_favorite_suppliers (kitchen_id, supplier_id, notes, created_by_user_id) VALUES
+-- KIT001 favorites
+('KIT001', 'SUP001', 'Thịt tươi chất lượng tốt', 'USR002'),
+('KIT001', 'SUP002', 'Tôm luôn tươi sống', 'USR002'),
+('KIT001', 'SUP003', 'Rau sạch Đà Lạt', 'USR002'),
+('KIT001', 'SUP004', 'Nước mắm ngon', 'USR002'),
+
+-- KIT002 favorites
+('KIT002', 'SUP005', 'Giá tốt, giao hàng đúng giờ', 'USR003'),
+('KIT002', 'SUP002', 'Cá tươi mỗi ngày', 'USR003'),
+('KIT002', 'SUP006', 'Gạo ngon', 'USR003'),
+
+-- KIT003 favorites
+('KIT003', 'SUP001', 'Gà ta chất lượng', 'USR005'),
+('KIT003', 'SUP003', 'Rau củ tươi', 'USR005'),
+('KIT003', 'SUP007', 'Dầu ăn chất lượng cao', 'USR005');
+
+-- ============================================================================
+-- SAMPLE ORDERS
+-- ============================================================================
+
+-- Order 1: KIT001 - Pending
+INSERT INTO public.orders (order_id, kitchen_id, order_date, note, status, created_by_user_id) VALUES
+('ORD001', 'KIT001', '2025-11-15', 'Đơn hàng cho thực đơn tuần tới', 'Pending', 'USR002');
+
+-- Order 1 Details - 3 dishes
+INSERT INTO public.order_details (order_id, dish_id, portions, note) VALUES
+('ORD001', 'DISH001', 50, 'Thịt kho cho 50 suất'),
+('ORD001', 'DISH006', 30, 'Tôm rim cho 30 suất'),
+('ORD001', 'DISH011', 60, 'Rau muống cho 60 suất');
+
+-- Order 1 Ingredients (auto-calculated from recipe standards)
+INSERT INTO public.order_ingredients (order_detail_id, ingredient_id, quantity, unit, standard_per_portion) VALUES
+-- DISH001 (50 portions) - order_detail_id will be 1
+(1, 'ING001', 10.0000, 'kg', 0.2000),
+(1, 'ING024', 100.0000, 'quả', 2.0000),
+(1, 'ING017', 2.5000, 'lít', 0.0500),
+(1, 'ING020', 0.2500, 'kg', 0.0050),
+(1, 'ING012', 2.5000, 'kg', 0.0500),
+
+-- DISH006 (30 portions) - order_detail_id will be 2
+(2, 'ING006', 6.0000, 'kg', 0.2000),
+(2, 'ING017', 1.2000, 'lít', 0.0400),
+(2, 'ING019', 0.0900, 'kg', 0.0030),
+(2, 'ING018', 0.4500, 'lít', 0.0150),
+
+-- DISH011 (60 portions) - order_detail_id will be 3
+(3, 'ING014', 12.0000, 'kg', 0.2000),
+(3, 'ING017', 0.9000, 'lít', 0.0150),
+(3, 'ING018', 0.9000, 'lít', 0.0150);
+
+-- Order 1 Supplementary Foods (additional ingredients not from recipes)
+INSERT INTO public.order_supplementary_foods (order_id, ingredient_id, quantity, unit, standard_per_portion, portions) VALUES
+('ORD001', 'ING021', 30.0000, 'kg', 0.3000, 100),  -- Gạo tẻ cho 100 suất
+('ORD001', 'ING016', 2.0000, 'kg', NULL, NULL);     -- Ớt phụ trội
+
+-- Order 2: KIT002 - Approved
+INSERT INTO public.orders (order_id, kitchen_id, order_date, note, status, created_by_user_id) VALUES
+('ORD002', 'KIT002', '2025-11-10', 'Đơn hàng đã duyệt', 'Approved', 'USR003');
+
+-- Order 2 Details - 2 dishes
+INSERT INTO public.order_details (order_id, dish_id, portions, note) VALUES
+('ORD002', 'DISH002', 40, 'Bò lúc lắc cho 40 suất'),
+('ORD002', 'DISH013', 50, 'Bún bò Huế cho 50 suất');
+
+-- Order 2 Ingredients - order_detail_id will be 4, 5
+INSERT INTO public.order_ingredients (order_detail_id, ingredient_id, quantity, unit, standard_per_portion) VALUES
+-- DISH002 (40 portions)
+(4, 'ING002', 7.2000, 'kg', 0.1800),
+(4, 'ING012', 3.2000, 'kg', 0.0800),
+(4, 'ING011', 2.0000, 'kg', 0.0500),
+(4, 'ING019', 0.0800, 'kg', 0.0020),
+(4, 'ING018', 0.8000, 'lít', 0.0200),
+
+-- DISH013 (50 portions)
+(5, 'ING022', 12.5000, 'kg', 0.2500),
+(5, 'ING002', 7.5000, 'kg', 0.1500),
+(5, 'ING017', 1.5000, 'lít', 0.0300),
+(5, 'ING016', 1.0000, 'kg', 0.0200);
+
+-- Order 2 Supplier Selections (linking to supplier price list)
+-- Note: selected_product_id must reference actual product_id from supplier_price_list
+-- Since product_id is auto-increment, we use subquery to find matching product
+INSERT INTO public.order_ingredient_suppliers (order_id, ingredient_id, selected_supplier_id, selected_product_id, quantity, unit, unit_price, total_cost, selected_by_user_id, notes) VALUES
+('ORD002', 'ING002', 'SUP005', (SELECT product_id FROM supplier_price_list WHERE supplier_id = 'SUP005' AND ingredient_id = 'ING002' AND unit_price = 345000 LIMIT 1), 14.7000, 'kg', 345000, 5071500, 'USR003', 'Nhà cung cấp ưa thích'),
+('ORD002', 'ING012', 'SUP003', (SELECT product_id FROM supplier_price_list WHERE supplier_id = 'SUP003' AND ingredient_id = 'ING012' AND unit_price = 26000 LIMIT 1), 3.2000, 'kg', 26000, 83200, 'USR003', NULL),
+('ORD002', 'ING022', 'SUP006', (SELECT product_id FROM supplier_price_list WHERE supplier_id = 'SUP006' AND ingredient_id = 'ING022' AND unit_price = 17000 LIMIT 1), 12.5000, 'kg', 17000, 212500, 'USR003', NULL);
+
+-- Order 3: KIT003 - Completed
+INSERT INTO public.orders (order_id, kitchen_id, order_date, note, status, created_by_user_id) VALUES
+('ORD003', 'KIT003', '2025-11-05', 'Đơn hàng đã hoàn thành', 'Completed', 'USR005');
+
+-- Order 3 Details
+INSERT INTO public.order_details (order_id, dish_id, portions, note) VALUES
+('ORD003', 'DISH003', 35, 'Gà kho gừng'),
+('ORD003', 'DISH012', 45, 'Cải bắp xào');
+
+-- Order 3 Ingredients - order_detail_id will be 6, 7
+INSERT INTO public.order_ingredients (order_detail_id, ingredient_id, quantity, unit, standard_per_portion) VALUES
+-- DISH003 (35 portions)
+(6, 'ING003', 8.7500, 'kg', 0.2500),
+(6, 'ING017', 1.0500, 'lít', 0.0300),
+(6, 'ING020', 0.1050, 'kg', 0.0030),
+(6, 'ING018', 0.5250, 'lít', 0.0150),
+
+-- DISH012 (45 portions)
+(7, 'ING015', 9.0000, 'kg', 0.2000),
+(7, 'ING017', 0.6750, 'lít', 0.0150),
+(7, 'ING018', 0.6750, 'lít', 0.0150);
+
+COMMIT;
+
+-- ============================================================================
+-- VERIFICATION QUERIES (Run these to verify the data)
+-- ============================================================================
+
+-- Count all records
+-- SELECT 'ingredient_types' as table_name, COUNT(*) as count FROM public.ingredient_types
+-- UNION ALL
+-- SELECT 'master_ingredients', COUNT(*) FROM public.master_ingredients
+-- UNION ALL
+-- SELECT 'master_dishes', COUNT(*) FROM public.master_dishes
+-- UNION ALL
+-- SELECT 'master_kitchens', COUNT(*) FROM public.master_kitchens
+-- UNION ALL
+-- SELECT 'master_suppliers', COUNT(*) FROM public.master_suppliers
+-- UNION ALL
+-- SELECT 'master_users', COUNT(*) FROM public.master_users
+-- UNION ALL
+-- SELECT 'dish_recipe_standards', COUNT(*) FROM public.dish_recipe_standards
+-- UNION ALL
+-- SELECT 'supplier_price_list', COUNT(*) FROM public.supplier_price_list
+-- UNION ALL
+-- SELECT 'kitchen_favorite_suppliers', COUNT(*) FROM public.kitchen_favorite_suppliers
+-- UNION ALL
+-- SELECT 'orders', COUNT(*) FROM public.orders
+-- UNION ALL
+-- SELECT 'order_details', COUNT(*) FROM public.order_details
+-- UNION ALL
+-- SELECT 'order_ingredients', COUNT(*) FROM public.order_ingredients
+-- UNION ALL
+-- SELECT 'order_supplementary_foods', COUNT(*) FROM public.order_supplementary_foods
+-- UNION ALL
+-- SELECT 'order_ingredient_suppliers', COUNT(*) FROM public.order_ingredient_suppliers;
+
+-- View sample dishes with their recipes
+-- SELECT 
+--     md.dish_name,
+--     mi.ingredient_name,
+--     drs.quantity_per_serving,
+--     drs.unit,
+--     drs.cost
+-- FROM dish_recipe_standards drs
+-- JOIN master_dishes md ON drs.dish_id = md.dish_id
+-- JOIN master_ingredients mi ON drs.ingredient_id = mi.ingredient_id
+-- ORDER BY md.dish_name, mi.ingredient_name;
+
+-- View orders with details
+-- SELECT 
+--     o.order_id,
+--     mk.kitchen_name,
+--     o.order_date,
+--     o.status,
+--     md.dish_name,
+--     od.portions
+-- FROM orders o
+-- JOIN master_kitchens mk ON o.kitchen_id = mk.kitchen_id
+-- JOIN order_details od ON o.order_id = od.order_id
+-- JOIN master_dishes md ON od.dish_id = md.dish_id
+-- ORDER BY o.order_date DESC, o.order_id, md.dish_name;
+```
+
+### handler/
+
+#### handler/dish.go
+*Language: Go | Size: 4221 bytes*
+
+```go
+package handler
+
+import (
+	"adong-be/logger"
+	"adong-be/models"
+	"adong-be/store"
+	"adong-be/utils"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetDishes with pagination and search
+func GetDishes(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetDishes called", "user_id", uid)
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetDishes bind query error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.Dish{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"dish_name", "dish_id", "description"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetDishes count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var dishes []models.Dish
+	db := store.DB.GormClient.Model(&models.Dish{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"dish_id":        "dish_id",
+		"dish_name":      "dish_name",
+		"cooking_method": "cooking_method",
+		"category":       "category",
+		"created_date":   "created_date",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	if err := db.Find(&dishes).Error; err != nil {
+		logger.Log.Error("GetDishes query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dishes,
+		Meta: meta,
+	})
+}
+
+func GetDish(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetDish called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var dish models.Dish
+	if err := store.DB.GormClient.First(&dish, "dish_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetDish not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Dish not found"})
+		return
+	}
+	c.JSON(http.StatusOK, dish)
+}
+
+func CreateDish(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("CreateDish called", "user_id", uid)
+	var dish models.Dish
+	if err := c.ShouldBindJSON(&dish); err != nil {
+		logger.Log.Error("CreateDish bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Create(&dish).Error; err != nil {
+		logger.Log.Error("CreateDish db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, dish)
+}
+
+func UpdateDish(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("UpdateDish called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var dish models.Dish
+	if err := store.DB.GormClient.First(&dish, "dish_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateDish not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Dish not found"})
+		return
+	}
+	if err := c.ShouldBindJSON(&dish); err != nil {
+		logger.Log.Error("UpdateDish bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Save(&dish).Error; err != nil {
+		logger.Log.Error("UpdateDish db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dish)
+}
+
+func DeleteDish(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("DeleteDish called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	if err := store.DB.GormClient.Delete(&models.Dish{}, "dish_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteDish db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Dish deleted successfully"})
+}
+```
+
+#### handler/dish_test.go
+*Language: Go | Size: 1643 bytes*
+
+```go
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestGetDishes_WithPagination(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// Setup
+	router := gin.Default()
+	router.GET("/dishes", GetDishes)
+
+	// Test case 1: Default pagination
+	req, _ := http.NewRequest("GET", "/dishes", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+
+	assert.Contains(t, response, "data")
+	assert.Contains(t, response, "meta")
+
+	meta := response["meta"].(map[string]interface{})
+	assert.Equal(t, float64(1), meta["current_page"])
+	assert.Equal(t, float64(10), meta["page_size"])
+
+	// Test case 2: Custom pagination
+	req, _ = http.NewRequest("GET", "/dishes?page=2&page_size=5", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	json.Unmarshal(w.Body.Bytes(), &response)
+	meta = response["meta"].(map[string]interface{})
+	assert.Equal(t, float64(2), meta["current_page"])
+	assert.Equal(t, float64(5), meta["page_size"])
+}
+
+func TestGetDishes_WithSearch(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	router := gin.Default()
+	router.GET("/dishes", GetDishes)
+
+	req, _ := http.NewRequest("GET", "/dishes?search=gà", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+
+	assert.Contains(t, response, "data")
+	assert.Contains(t, response, "meta")
+}
+```
+
+#### handler/ingredient.go
+*Language: Go | Size: 4422 bytes*
+
+```go
+package handler
+
+import (
+	"adong-be/logger"
+	"adong-be/models"
+	"adong-be/store"
+	"adong-be/utils"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetIngredients with pagination and search - Returns ResourceCollection format
+func GetIngredients(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetIngredients called", "user_id", uid)
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetIngredients bind query error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.Ingredient{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"ingredient_name", "ingredient_id"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetIngredients count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var items []models.Ingredient
+	db := store.DB.GormClient.Model(&models.Ingredient{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"ingredient_id":   "ingredient_id",
+		"ingredient_name": "ingredient_name",
+		"unit":            "unit",
+		"created_date":    "created_date",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	if err := db.Find(&items).Error; err != nil {
+		logger.Log.Error("GetIngredients query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: items,
+		Meta: meta,
+	})
+}
+
+func GetIngredient(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetIngredient called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var item models.Ingredient
+	if err := store.DB.GormClient.First(&item, "ingredient_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetIngredient not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func CreateIngredient(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("CreateIngredient called", "user_id", uid)
+	var item models.Ingredient
+	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("CreateIngredient bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Create(&item).Error; err != nil {
+		logger.Log.Error("CreateIngredient db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, item)
+}
+
+func UpdateIngredient(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("UpdateIngredient called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var item models.Ingredient
+	if err := store.DB.GormClient.First(&item, "ingredient_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateIngredient not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found"})
+		return
+	}
+	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("UpdateIngredient bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Save(&item).Error; err != nil {
+		logger.Log.Error("UpdateIngredient db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func DeleteIngredient(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("DeleteIngredient called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	if err := store.DB.GormClient.Delete(&models.Ingredient{}, "ingredient_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteIngredient db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Ingredient deleted successfully"})
+}
+```
+
+#### handler/kitchen.go
+*Language: Go | Size: 9616 bytes*
+
+```go
+package handler
+
+import (
+	"adong-be/logger"
+	"adong-be/models"
+	"adong-be/store"
+	"adong-be/utils"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetKitchens with pagination and search - Returns ResourceCollection format
+func GetKitchens(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetKitchens called", "user_id", uid)
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetKitchens bind query error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.Kitchen{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"kitchen_name", "kitchen_id", "address"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetKitchens count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var items []models.Kitchen
+	db := store.DB.GormClient.Model(&models.Kitchen{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"kitchen_id":   "kitchen_id",
+		"kitchen_name": "kitchen_name",
+		"address":      "address",
+		"created_date": "created_date",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	if err := db.Find(&items).Error; err != nil {
+		logger.Log.Error("GetKitchens query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: items,
+		Meta: meta,
+	})
+}
+
+func GetKitchen(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetKitchen called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var item models.Kitchen
+	if err := store.DB.GormClient.First(&item, "kitchen_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetKitchen not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func CreateKitchen(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("CreateKitchen called", "user_id", uid)
+	var item models.Kitchen
+	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("CreateKitchen bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Create(&item).Error; err != nil {
+		logger.Log.Error("CreateKitchen db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, item)
+}
+
+func UpdateKitchen(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("UpdateKitchen called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var item models.Kitchen
+	if err := store.DB.GormClient.First(&item, "kitchen_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateKitchen not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
+		return
+	}
+	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("UpdateKitchen bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Save(&item).Error; err != nil {
+		logger.Log.Error("UpdateKitchen db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func DeleteKitchen(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("DeleteKitchen called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	if err := store.DB.GormClient.Delete(&models.Kitchen{}, "kitchen_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteKitchen db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Kitchen deleted successfully"})
+}
+
+// ============================================================================
+// Kitchen Favorite Suppliers Handlers
+// ============================================================================
+
+// GetKitchenFavoriteSuppliers returns all favorite suppliers for a kitchen
+func GetKitchenFavoriteSuppliers(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	kitchenID := c.Param("id")
+	logger.Log.Info("GetKitchenFavoriteSuppliers called", "kitchen_id", kitchenID, "user_id", uid)
+
+	// Validate kitchen exists
+	var kitchen models.Kitchen
+	if err := store.DB.GormClient.First(&kitchen, "kitchen_id = ?", kitchenID).Error; err != nil {
+		logger.Log.Error("GetKitchenFavoriteSuppliers kitchen not found", "kitchen_id", kitchenID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
+		return
+	}
+
+	var favorites []models.KitchenFavoriteSupplier
+	query := store.DB.GormClient.
+		Where("kitchen_id = ?", kitchenID).
+		Preload("Supplier").
+		Preload("CreatedBy")
+
+	// Order by display_order if set, otherwise by created_date
+	query = query.Order("COALESCE(display_order, 999999), created_date ASC")
+
+	if err := query.Find(&favorites).Error; err != nil {
+		logger.Log.Error("GetKitchenFavoriteSuppliers db error", "kitchen_id", kitchenID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Count total favorites for meta info
+	var total int64
+	if err := store.DB.GormClient.Model(&models.KitchenFavoriteSupplier{}).Where("kitchen_id = ?", kitchenID).Count(&total).Error; err != nil {
+		logger.Log.Error("GetKitchenFavoriteSuppliers count error", "kitchen_id", kitchenID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create pagination meta (using page 1, all items as per_page)
+	meta := models.CalculatePaginationMeta(1, len(favorites), total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: favorites,
+		Meta: meta,
+	})
+}
+
+// GetKitchenFavoriteSupplier returns a single favorite supplier by ID
+func GetKitchenFavoriteSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	kitchenID := c.Param("id")
+	favoriteID := c.Param("favoriteId")
+	logger.Log.Info("GetKitchenFavoriteSupplier called", "kitchen_id", kitchenID, "favorite_id", favoriteID, "user_id", uid)
+
+	var favorite models.KitchenFavoriteSupplier
+	if err := store.DB.GormClient.
+		Where("favorite_id = ? AND kitchen_id = ?", favoriteID, kitchenID).
+		Preload("Kitchen").
+		Preload("Supplier").
+		Preload("CreatedBy").
+		First(&favorite).Error; err != nil {
+		logger.Log.Error("GetKitchenFavoriteSupplier not found", "kitchen_id", kitchenID, "favorite_id", favoriteID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Favorite supplier not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, favorite)
+}
+
+// CreateKitchenFavoriteSupplier adds a supplier to a kitchen's favorites
+func CreateKitchenFavoriteSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	kitchenID := c.Param("id")
+	logger.Log.Info("CreateKitchenFavoriteSupplier called", "kitchen_id", kitchenID, "user_id", uid)
+
+	// Get user ID from authentication middleware
+	var userID string
+	if identity, ok := c.Get("identity"); ok {
+		if v, ok2 := identity.(string); ok2 {
+			userID = v
+		}
+	}
+
+	var favorite models.KitchenFavoriteSupplier
+	if err := c.ShouldBindJSON(&favorite); err != nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set kitchen_id from URL parameter
+	favorite.KitchenID = kitchenID
+	favorite.CreatedByUserID = userID
+
+	// Validate kitchen exists
+	var kitchen models.Kitchen
+	if err := store.DB.GormClient.First(&kitchen, "kitchen_id = ?", kitchenID).Error; err != nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier kitchen not found", "kitchen_id", kitchenID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
+		return
+	}
+
+	// Validate supplier exists
+	var supplier models.Supplier
+	if err := store.DB.GormClient.First(&supplier, "supplier_id = ?", favorite.SupplierID).Error; err != nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier supplier not found", "supplier_id", favorite.SupplierID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
+		return
+	}
+
+	// Check if favorite already exists (unique constraint: kitchen_id + supplier_id)
+	var existing models.KitchenFavoriteSupplier
+	if err := store.DB.GormClient.Where("kitchen_id = ? AND supplier_id = ?", kitchenID, favorite.SupplierID).First(&existing).Error; err == nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier duplicate favorite", "kitchen_id", kitchenID, "supplier_id", favorite.SupplierID)
+		c.JSON(http.StatusConflict, gin.H{"error": "This supplier is already in the kitchen's favorites"})
+		return
+	}
+
+	// Create favorite
+	if err := store.DB.GormClient.Create(&favorite).Error; err != nil {
+		logger.Log.Error("CreateKitchenFavoriteSupplier db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload with relations
+	store.DB.GormClient.
+		Preload("Kitchen").
+		Preload("Supplier").
+		Preload("CreatedBy").
+		First(&favorite, "favorite_id = ?", favorite.FavoriteID)
+
+	c.JSON(http.StatusCreated, favorite)
+}
+```
+
+#### handler/order.go
+*Language: Go | Size: 34865 bytes*
+
+```go
+package handler
+
+import (
+	"adong-be/logger"
+	"adong-be/models"
+	"adong-be/store"
+	"adong-be/utils"
+	"errors"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+func GetOrders(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetOrders called", "user_id", uid)
+
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetOrders bind query error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(params.Page, params.PageSize, params.Search, params.SortBy, params.SortDir)
+
+	kitchenID := c.Query("kitchen_id")
+	status := c.Query("status")
+	fromDate := c.Query("from_date")
+	toDate := c.Query("to_date")
+	dishID := c.Query("dish_id")
+	ingredientID := c.Query("ingredient_id")
+
+	var orders []models.Order
+	var total int64
+
+	dataDB := store.DB.GormClient.Model(&models.Order{})
+	countDB := store.DB.GormClient.Model(&models.Order{})
+
+	if dishID != "" || ingredientID != "" {
+		countDB = countDB.Distinct("orders.order_id")
+		dataDB = dataDB.Distinct("orders.order_id")
+	}
+
+	if params.Search != "" {
+		dataDB = dataDB.Where("note ILIKE ? OR order_id ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
+		countDB = countDB.Where("note ILIKE ? OR order_id ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
+	}
+	if kitchenID != "" {
+		dataDB = dataDB.Where("kitchen_id = ?", kitchenID)
+		countDB = countDB.Where("kitchen_id = ?", kitchenID)
+	}
+	if status != "" {
+		dataDB = dataDB.Where("status = ?", status)
+		countDB = countDB.Where("status = ?", status)
+	}
+	if fromDate != "" {
+		if t, err := time.Parse("2006-01-02", fromDate); err == nil {
+			dataDB = dataDB.Where("order_date >= ?", t)
+			countDB = countDB.Where("order_date >= ?", t)
+		} else {
+			dataDB = dataDB.Where("order_date >= ?", fromDate)
+			countDB = countDB.Where("order_date >= ?", fromDate)
+		}
+	}
+	if toDate != "" {
+		if t, err := time.Parse("2006-01-02", toDate); err == nil {
+			dataDB = dataDB.Where("order_date < ?", t.Add(24*time.Hour))
+			countDB = countDB.Where("order_date < ?", t.Add(24*time.Hour))
+		} else {
+			dataDB = dataDB.Where("order_date <= ?", toDate)
+			countDB = countDB.Where("order_date <= ?", toDate)
+		}
+	}
+	if dishID != "" {
+		dataDB = dataDB.Joins("JOIN order_details od ON od.order_id = orders.order_id").Where("od.dish_id = ?", dishID)
+		countDB = countDB.Joins("JOIN order_details od ON od.order_id = orders.order_id").Where("od.dish_id = ?", dishID)
+	}
+	if ingredientID != "" {
+		dataDB = dataDB.Joins("JOIN order_details od2 ON od2.order_id = orders.order_id").
+			Joins("JOIN order_ingredients oi ON oi.order_detail_id = od2.order_detail_id").
+			Where("oi.ingredient_id = ?", ingredientID)
+		countDB = countDB.Joins("JOIN order_details od2 ON od2.order_id = orders.order_id").
+			Joins("JOIN order_ingredients oi ON oi.order_detail_id = od2.order_detail_id").
+			Where("oi.ingredient_id = ?", ingredientID)
+	}
+
+	if err := countDB.Distinct("orders.order_id").Count(&total).Error; err != nil {
+		logger.Log.Error("GetOrders count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	allowedSort := map[string]string{
+		"order_id":     "orders.order_id",
+		"order_date":   "orders.order_date",
+		"status":       "orders.status",
+		"created_date": "orders.created_date",
+	}
+	dataDB = utils.ApplySort(dataDB, params.SortBy, params.SortDir, allowedSort)
+	dataDB = utils.ApplyPagination(dataDB, params.Page, params.PageSize)
+
+	if err := dataDB.Select("orders.*").
+		Preload("Kitchen").
+		Preload("CreatedBy").
+		Preload("Details.Dish").
+		Preload("Details.Ingredients.Ingredient").
+		Preload("SupplementaryFoods.Ingredient").
+		Find(&orders).Error; err != nil {
+		logger.Log.Error("GetOrders query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	dtos := make([]models.OrderDTO, len(orders))
+	for i := range orders {
+		dtos[i] = convertOrderToDTO(&orders[i], true)
+	}
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{Data: dtos, Meta: meta})
+}
+
+func GetOrder(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetOrder called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var order models.Order
+	if err := store.DB.GormClient.
+		Preload("Kitchen").
+		Preload("CreatedBy").
+		Preload("Details.Dish").
+		Preload("Details.Ingredients.Ingredient").
+		Preload("SupplementaryFoods.Ingredient").
+		First(&order, "order_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetOrder not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	dto := convertOrderToDTO(&order, true)
+	c.JSON(http.StatusOK, dto)
+}
+
+func CreateOrder(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("CreateOrder called", "user_id", uid)
+	var order models.Order
+	if err := c.ShouldBindJSON(&order); err != nil {
+		logger.Log.Error("CreateOrder bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if identity, ok := c.Get("identity"); ok {
+		if v, ok2 := identity.(string); ok2 {
+			order.CreatedByUserID = v
+		}
+	}
+
+	if order.OrderID == "" {
+		order.OrderID = uuid.New().String()
+		logger.Log.Info("CreateOrder auto-generated OrderID", "orderId", order.OrderID)
+	}
+
+	tx := store.DB.GormClient.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	details := order.Details
+	supplementaryFoods := order.SupplementaryFoods
+	order.Details = nil
+	order.SupplementaryFoods = nil
+
+	if err := tx.Create(&order).Error; err != nil {
+		logger.Log.Error("CreateOrder create header error", "error", err)
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	for i := range details {
+		details[i].OrderID = order.OrderID
+		details[i].OrderDetailID = 0
+
+		ingredients := details[i].Ingredients
+		details[i].Ingredients = nil
+
+		if err := tx.Create(&details[i]).Error; err != nil {
+			logger.Log.Error("CreateOrder create detail error", "error", err)
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		for j := range ingredients {
+			ingredients[j].OrderDetailID = details[i].OrderDetailID
+			ingredients[j].OrderIngredientID = 0
+
+			if ingredients[j].Quantity <= 0 {
+				if ingredients[j].StandardPerPortion > 0 && details[i].Portions > 0 {
+					ingredients[j].Quantity = ingredients[j].StandardPerPortion * float64(details[i].Portions)
+				} else {
+					logger.Log.Warn("CreateOrder skipping ingredient with invalid quantity", "ingredient_id", ingredients[j].IngredientID)
+					continue
+				}
+			}
+
+			if err := tx.Create(&ingredients[j]).Error; err != nil {
+				logger.Log.Error("CreateOrder create ingredient error", "error", err)
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		}
+	}
+
+	for i := range supplementaryFoods {
+		supplementaryFoods[i].OrderID = order.OrderID
+		supplementaryFoods[i].SupplementaryID = 0
+
+		if supplementaryFoods[i].Quantity <= 0 {
+			if supplementaryFoods[i].StandardPerPortion > 0 && supplementaryFoods[i].Portions > 0 {
+				supplementaryFoods[i].Quantity = supplementaryFoods[i].StandardPerPortion * float64(supplementaryFoods[i].Portions)
+			} else {
+				logger.Log.Warn("CreateOrder skipping supplementary with invalid quantity", "ingredient_id", supplementaryFoods[i].IngredientID)
+				continue
+			}
+		}
+
+		if err := tx.Create(&supplementaryFoods[i]).Error; err != nil {
+			logger.Log.Error("CreateOrder create supplementary error", "error", err)
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		logger.Log.Error("CreateOrder commit error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	store.DB.GormClient.
+		Preload("Kitchen").
+		Preload("CreatedBy").
+		Preload("Details.Dish").
+		Preload("Details.Ingredients.Ingredient").
+		Preload("SupplementaryFoods.Ingredient").
+		First(&order, "order_id = ?", order.OrderID)
+
+	dto := convertOrderToDTO(&order, true)
+	c.JSON(http.StatusCreated, dto)
+}
+
+func UpdateOrderStatus(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("UpdateOrderStatus called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Log.Error("UpdateOrderStatus bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateOrderStatus not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	order.Status = req.Status
+	if err := store.DB.GormClient.Save(&order).Error; err != nil {
+		logger.Log.Error("UpdateOrderStatus db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Order status updated successfully", "status": order.Status})
+}
+
+func DeleteOrder(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("DeleteOrder called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	if err := store.DB.GormClient.Delete(&models.Order{}, "order_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteOrder db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Order deleted successfully"})
+}
+
+type IngredientTotal struct {
+	IngredientID   string  `json:"ingredientId"`
+	IngredientName string  `json:"ingredientName"`
+	Unit           string  `json:"unit"`
+	TotalQuantity  float64 `json:"totalQuantity"`
+}
+
+func GetOrderIngredientsSummary(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetOrderIngredientsSummary called", "order_id", c.Param("id"), "user_id", uid)
+	orderID := c.Param("id")
+
+	var results []IngredientTotal
+	sql := `
+        SELECT x.ingredient_id AS ingredient_id,
+               COALESCE(mi.ingredient_name, '') AS ingredient_name,
+               x.unit AS unit,
+               COALESCE(SUM(x.total_qty)::double precision, 0) AS total_quantity
+        FROM (
+            SELECT oi.ingredient_id,
+                   oi.unit,
+                   COALESCE(oi.quantity, oi.standard_per_portion * od.portions) AS total_qty
+            FROM order_ingredients oi
+            JOIN order_details od ON od.order_detail_id = oi.order_detail_id
+            WHERE od.order_id = ?
+            UNION ALL
+            SELECT osf.ingredient_id,
+                   osf.unit,
+                   COALESCE(osf.quantity, osf.standard_per_portion * osf.portions) AS total_qty
+            FROM order_supplementary_foods osf
+            WHERE osf.order_id = ?
+        ) x
+        LEFT JOIN master_ingredients mi ON mi.ingredient_id = x.ingredient_id
+        GROUP BY x.ingredient_id, mi.ingredient_name, x.unit
+        ORDER BY mi.ingredient_name`
+
+	if err := store.DB.GormClient.Raw(sql, orderID, orderID).Scan(&results).Error; err != nil {
+		logger.Log.Error("GetOrderIngredientsSummary db error", "order_id", orderID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
+func GetOrderIngredientSummary(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetOrderIngredientSummary called", "order_id", c.Param("id"), "ingredient_id", c.Param("ingredientId"), "user_id", uid)
+	orderID := c.Param("id")
+	ingredientID := c.Param("ingredientId")
+
+	var result IngredientTotal
+	sql := `
+        SELECT x.ingredient_id AS ingredient_id,
+               COALESCE(mi.ingredient_name, '') AS ingredient_name,
+               x.unit AS unit,
+               COALESCE(SUM(x.total_qty)::double precision, 0) AS total_quantity
+        FROM (
+            SELECT oi.ingredient_id,
+                   oi.unit,
+                   COALESCE(oi.quantity, oi.standard_per_portion * od.portions) AS total_qty
+            FROM order_ingredients oi
+            JOIN order_details od ON od.order_detail_id = oi.order_detail_id
+            WHERE od.order_id = ? AND oi.ingredient_id = ?
+            UNION ALL
+            SELECT osf.ingredient_id,
+                   osf.unit,
+                   COALESCE(osf.quantity, osf.standard_per_portion * osf.portions) AS total_qty
+            FROM order_supplementary_foods osf
+            WHERE osf.order_id = ? AND osf.ingredient_id = ?
+        ) x
+        LEFT JOIN master_ingredients mi ON mi.ingredient_id = x.ingredient_id
+        GROUP BY x.ingredient_id, mi.ingredient_name, x.unit
+        ORDER BY mi.ingredient_name`
+
+	if err := store.DB.GormClient.Raw(sql, orderID, ingredientID, orderID, ingredientID).Scan(&result).Error; err != nil {
+		logger.Log.Error("GetOrderIngredientSummary db error", "order_id", orderID, "ingredient_id", ingredientID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+type SupplierOption struct {
+	ProductID     int     `json:"productId"`
+	ProductName   string  `json:"productName"`
+	SupplierID    string  `json:"supplierId"`
+	SupplierName  string  `json:"supplierName"`
+	UnitPrice     float64 `json:"unitPrice"`
+	Unit          string  `json:"unit"`
+	Specification string  `json:"specification"`
+	IsFavorite    bool    `json:"isFavorite"`
+	IsLowestPrice bool    `json:"isLowestPrice"`
+	TotalCost     float64 `json:"totalCost"`
+}
+
+type IngredientSuppliers struct {
+	IngredientID   string          `json:"ingredientId"`
+	IngredientName string          `json:"ingredientName"`
+	TotalQuantity  float64         `json:"totalQuantity"`
+	Unit           string          `json:"unit"`
+	BestSupplier   *SupplierOption `json:"bestSupplier"`
+}
+
+// GetBestSuppliersForOrder returns best supplier recommendations for all ingredients
+func GetBestSuppliersForOrder(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	orderID := c.Param("id")
+	logger.Log.Info("GetBestSuppliersForOrder called", "order_id", orderID, "user_id", uid)
+
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
+		logger.Log.Error("GetBestSuppliersForOrder order not found", "order_id", orderID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	var ingredients []IngredientTotal
+	sql := `
+        SELECT DISTINCT x.ingredient_id AS ingredient_id,
+               COALESCE(mi.ingredient_name, '') AS ingredient_name,
+               x.unit AS unit,
+               COALESCE(SUM(x.total_qty)::double precision, 0) AS total_quantity
+        FROM (
+            SELECT oi.ingredient_id,
+                   oi.unit,
+                   COALESCE(oi.quantity, oi.standard_per_portion * od.portions) AS total_qty
+            FROM order_ingredients oi
+            JOIN order_details od ON od.order_detail_id = oi.order_detail_id
+            WHERE od.order_id = ?
+            UNION ALL
+            SELECT osf.ingredient_id,
+                   osf.unit,
+                   COALESCE(osf.quantity, osf.standard_per_portion * osf.portions) AS total_qty
+            FROM order_supplementary_foods osf
+            WHERE osf.order_id = ?
+        ) x
+        LEFT JOIN master_ingredients mi ON mi.ingredient_id = x.ingredient_id
+        GROUP BY x.ingredient_id, mi.ingredient_name, x.unit`
+
+	if err := store.DB.GormClient.Raw(sql, orderID, orderID).Scan(&ingredients).Error; err != nil {
+		logger.Log.Error("GetBestSuppliersForOrder ingredients query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var favorites []models.KitchenFavoriteSupplier
+	store.DB.GormClient.Where("kitchen_id = ?", order.KitchenID).Find(&favorites)
+
+	favoriteMap := make(map[string]bool)
+	for _, fav := range favorites {
+		favoriteMap[fav.SupplierID] = true
+	}
+
+	var results []IngredientSuppliers
+
+	for _, ing := range ingredients {
+		var prices []models.SupplierPrice
+		if err := store.DB.GormClient.
+			Preload("Supplier").
+			Where("ingredient_id = ? AND active = true", ing.IngredientID).
+			Where("(effective_from IS NULL OR effective_from <= NOW())").
+			Where("(effective_to IS NULL OR effective_to >= NOW())").
+			Order("unit_price ASC").
+			Find(&prices).Error; err != nil {
+			logger.Log.Error("GetBestSuppliersForOrder prices query error", "ingredient_id", ing.IngredientID, "error", err)
+			continue
+		}
+
+		if len(prices) == 0 {
+			logger.Log.Warn("GetBestSuppliersForOrder no prices found", "ingredient_id", ing.IngredientID)
+			results = append(results, IngredientSuppliers{
+				IngredientID:   ing.IngredientID,
+				IngredientName: ing.IngredientName,
+				TotalQuantity:  ing.TotalQuantity,
+				Unit:           ing.Unit,
+				BestSupplier:   nil,
+			})
+			continue
+		}
+
+		lowestPrice := prices[0].UnitPrice
+
+		var allSuppliers []SupplierOption
+		var bestSupplier *SupplierOption
+		var favoriteSuppliers []SupplierOption
+
+		for _, price := range prices {
+			isFavorite := favoriteMap[price.SupplierID]
+			isLowestPrice := (price.UnitPrice == lowestPrice)
+			totalCost := ing.TotalQuantity * price.UnitPrice
+
+			option := SupplierOption{
+				ProductID:     price.ProductID,
+				ProductName:   price.ProductName,
+				SupplierID:    price.SupplierID,
+				UnitPrice:     price.UnitPrice,
+				Unit:          price.Unit,
+				Specification: price.Specification,
+				IsFavorite:    isFavorite,
+				IsLowestPrice: isLowestPrice,
+				TotalCost:     totalCost,
+			}
+
+			if price.Supplier != nil {
+				option.SupplierName = price.Supplier.SupplierName
+			}
+
+			allSuppliers = append(allSuppliers, option)
+
+			if isFavorite {
+				favoriteSuppliers = append(favoriteSuppliers, option)
+			}
+		}
+
+		if len(favoriteSuppliers) > 0 {
+			bestSupplier = &favoriteSuppliers[0]
+		} else {
+			// Create best supplier from the lowest price option
+			price := prices[0]
+			isFavorite := favoriteMap[price.SupplierID]
+			totalCost := ing.TotalQuantity * price.UnitPrice
+
+			bestSupplier = &SupplierOption{
+				ProductID:     price.ProductID,
+				ProductName:   price.ProductName,
+				SupplierID:    price.SupplierID,
+				UnitPrice:     price.UnitPrice,
+				Unit:          price.Unit,
+				Specification: price.Specification,
+				IsFavorite:    isFavorite,
+				IsLowestPrice: true,
+				TotalCost:     totalCost,
+			}
+
+			if price.Supplier != nil {
+				bestSupplier.SupplierName = price.Supplier.SupplierName
+			}
+		}
+
+		results = append(results, IngredientSuppliers{
+			IngredientID:   ing.IngredientID,
+			IngredientName: ing.IngredientName,
+			TotalQuantity:  ing.TotalQuantity,
+			Unit:           ing.Unit,
+			BestSupplier:   bestSupplier,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orderId":     orderID,
+		"kitchenId":   order.KitchenID,
+		"ingredients": results,
+	})
+}
+
+// GetBestSuppliersForIngredients returns best supplier recommendations for a list of ingredients
+// This endpoint is for orders that haven't been saved yet
+func GetBestSuppliersForIngredients(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetBestSuppliersForIngredients called", "user_id", uid)
+
+	var request struct {
+		KitchenID   string `json:"kitchenId" binding:"required"`
+		Ingredients []struct {
+			IngredientID string  `json:"ingredientId" binding:"required"`
+			Quantity     float64 `json:"quantity" binding:"required,gt=0"`
+			Unit         string  `json:"unit" binding:"required"`
+		} `json:"ingredients" binding:"required,min=1"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		logger.Log.Error("GetBestSuppliersForIngredients bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate kitchen exists
+	var kitchen models.Kitchen
+	if err := store.DB.GormClient.First(&kitchen, "kitchen_id = ?", request.KitchenID).Error; err != nil {
+		logger.Log.Error("GetBestSuppliersForIngredients kitchen not found", "kitchen_id", request.KitchenID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
+		return
+	}
+
+	// Get favorite suppliers for the kitchen
+	var favorites []models.KitchenFavoriteSupplier
+	store.DB.GormClient.Where("kitchen_id = ?", request.KitchenID).Find(&favorites)
+
+	favoriteMap := make(map[string]bool)
+	for _, fav := range favorites {
+		favoriteMap[fav.SupplierID] = true
+	}
+
+	var results []IngredientSuppliers
+
+	// Process each ingredient from the request
+	for _, reqIng := range request.Ingredients {
+		// Validate ingredient exists and get its name
+		var ingredient models.Ingredient
+		if err := store.DB.GormClient.First(&ingredient, "ingredient_id = ?", reqIng.IngredientID).Error; err != nil {
+			logger.Log.Warn("GetBestSuppliersForIngredients ingredient not found", "ingredient_id", reqIng.IngredientID, "error", err)
+			results = append(results, IngredientSuppliers{
+				IngredientID:   reqIng.IngredientID,
+				IngredientName: "",
+				TotalQuantity:  reqIng.Quantity,
+				Unit:           reqIng.Unit,
+				BestSupplier:   nil,
+			})
+			continue
+		}
+
+		// Get supplier prices for this ingredient
+		var prices []models.SupplierPrice
+		if err := store.DB.GormClient.
+			Preload("Supplier").
+			Where("ingredient_id = ? AND active = true", reqIng.IngredientID).
+			Where("(effective_from IS NULL OR effective_from <= NOW())").
+			Where("(effective_to IS NULL OR effective_to >= NOW())").
+			Order("unit_price ASC").
+			Find(&prices).Error; err != nil {
+			logger.Log.Error("GetBestSuppliersForIngredients prices query error", "ingredient_id", reqIng.IngredientID, "error", err)
+			results = append(results, IngredientSuppliers{
+				IngredientID:   reqIng.IngredientID,
+				IngredientName: ingredient.IngredientName,
+				TotalQuantity:  reqIng.Quantity,
+				Unit:           reqIng.Unit,
+				BestSupplier:   nil,
+			})
+			continue
+		}
+
+		if len(prices) == 0 {
+			logger.Log.Warn("GetBestSuppliersForIngredients no prices found", "ingredient_id", reqIng.IngredientID)
+			results = append(results, IngredientSuppliers{
+				IngredientID:   reqIng.IngredientID,
+				IngredientName: ingredient.IngredientName,
+				TotalQuantity:  reqIng.Quantity,
+				Unit:           reqIng.Unit,
+				BestSupplier:   nil,
+			})
+			continue
+		}
+
+		lowestPrice := prices[0].UnitPrice
+
+		var bestSupplier *SupplierOption
+		var favoriteSuppliers []SupplierOption
+
+		for _, price := range prices {
+			isFavorite := favoriteMap[price.SupplierID]
+			isLowestPrice := (price.UnitPrice == lowestPrice)
+			totalCost := reqIng.Quantity * price.UnitPrice
+
+			option := SupplierOption{
+				ProductID:     price.ProductID,
+				ProductName:   price.ProductName,
+				SupplierID:    price.SupplierID,
+				UnitPrice:     price.UnitPrice,
+				Unit:          price.Unit,
+				Specification: price.Specification,
+				IsFavorite:    isFavorite,
+				IsLowestPrice: isLowestPrice,
+				TotalCost:     totalCost,
+			}
+
+			if price.Supplier != nil {
+				option.SupplierName = price.Supplier.SupplierName
+			}
+
+			if isFavorite {
+				favoriteSuppliers = append(favoriteSuppliers, option)
+			}
+		}
+
+		if len(favoriteSuppliers) > 0 {
+			bestSupplier = &favoriteSuppliers[0]
+		} else {
+			// Create best supplier from the lowest price option
+			price := prices[0]
+			isFavorite := favoriteMap[price.SupplierID]
+			totalCost := reqIng.Quantity * price.UnitPrice
+
+			bestSupplier = &SupplierOption{
+				ProductID:     price.ProductID,
+				ProductName:   price.ProductName,
+				SupplierID:    price.SupplierID,
+				UnitPrice:     price.UnitPrice,
+				Unit:          price.Unit,
+				Specification: price.Specification,
+				IsFavorite:    isFavorite,
+				IsLowestPrice: true,
+				TotalCost:     totalCost,
+			}
+
+			if price.Supplier != nil {
+				bestSupplier.SupplierName = price.Supplier.SupplierName
+			}
+		}
+
+		results = append(results, IngredientSuppliers{
+			IngredientID:   reqIng.IngredientID,
+			IngredientName: ingredient.IngredientName,
+			TotalQuantity:  reqIng.Quantity,
+			Unit:           reqIng.Unit,
+			BestSupplier:   bestSupplier,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"kitchenId":   request.KitchenID,
+		"ingredients": results,
+	})
+}
+
+func SaveOrderIngredientsWithSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	orderID := c.Param("id")
+	logger.Log.Info("SaveOrderIngredientsWithSupplier called", "order_id", orderID, "user_id", uid)
+
+	var userID string
+	if identity, ok := c.Get("identity"); ok {
+		if v, ok2 := identity.(string); ok2 {
+			userID = v
+		}
+	}
+
+	var request struct {
+		Selections []struct {
+			IngredientID       string  `json:"ingredientId" binding:"required"`
+			SelectedSupplierID string  `json:"selectedSupplierId" binding:"required"`
+			SelectedProductID  int     `json:"selectedProductId" binding:"required"`
+			Quantity           float64 `json:"quantity" binding:"required,gt=0"`
+			Unit               string  `json:"unit" binding:"required"`
+			UnitPrice          float64 `json:"unitPrice" binding:"required,gte=0"`
+			Notes              string  `json:"notes"`
+		} `json:"selections" binding:"required,min=1"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier order not found", "order_id", orderID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	for i, sel := range request.Selections {
+		var ingredient models.Ingredient
+		if err := store.DB.GormClient.First(&ingredient, "ingredient_id = ?", sel.IngredientID).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not found", "ingredient_id", sel.IngredientID, "error", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Ingredient not found: " + sel.IngredientID})
+			return
+		}
+
+		var supplier models.Supplier
+		if err := store.DB.GormClient.First(&supplier, "supplier_id = ?", sel.SelectedSupplierID).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier supplier not found", "supplier_id", sel.SelectedSupplierID, "error", err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found: " + sel.SelectedSupplierID})
+			return
+		}
+
+		var product models.SupplierPrice
+		if err := store.DB.GormClient.First(&product, "product_id = ? AND supplier_id = ? AND ingredient_id = ?",
+			sel.SelectedProductID, sel.SelectedSupplierID, sel.IngredientID).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier product mismatch",
+				"product_id", sel.SelectedProductID,
+				"supplier_id", sel.SelectedSupplierID,
+				"ingredient_id", sel.IngredientID,
+				"error", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Product not found or does not match supplier/ingredient"})
+			return
+		}
+
+		var presentCount int64
+		presentSQL := `
+			SELECT COUNT(*) AS cnt FROM (
+				SELECT 1
+				FROM order_details od
+				JOIN order_ingredients oi ON oi.order_detail_id = od.order_detail_id
+				WHERE od.order_id = ? AND oi.ingredient_id = ?
+				UNION ALL
+				SELECT 1
+				FROM order_supplementary_foods osf
+				WHERE osf.order_id = ? AND osf.ingredient_id = ?
+			) x`
+		if err := store.DB.GormClient.Raw(presentSQL, orderID, sel.IngredientID, orderID, sel.IngredientID).Scan(&presentCount).Error; err != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier validate ingredient error",
+				"order_id", orderID, "ingredient_id", sel.IngredientID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if presentCount == 0 {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier ingredient not in order",
+				"order_id", orderID, "ingredient_id", sel.IngredientID)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ingredient does not belong to the order: " + sel.IngredientID})
+			return
+		}
+
+		for j := i + 1; j < len(request.Selections); j++ {
+			if request.Selections[j].IngredientID == sel.IngredientID {
+				logger.Log.Error("SaveOrderIngredientsWithSupplier duplicate ingredient", "ingredient_id", sel.IngredientID)
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Duplicate ingredient_id in request: " + sel.IngredientID})
+				return
+			}
+		}
+	}
+
+	tx := store.DB.GormClient.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var savedSelections []models.OrderIngredientSupplier
+	for _, sel := range request.Selections {
+		totalCost := sel.Quantity * sel.UnitPrice
+
+		var existing models.OrderIngredientSupplier
+		findErr := tx.Where("order_id = ? AND ingredient_id = ?", orderID, sel.IngredientID).First(&existing).Error
+
+		if errors.Is(findErr, gorm.ErrRecordNotFound) {
+			newSelection := models.OrderIngredientSupplier{
+				OrderID:            orderID,
+				IngredientID:       sel.IngredientID,
+				SelectedSupplierID: sel.SelectedSupplierID,
+				SelectedProductID:  sel.SelectedProductID,
+				Quantity:           sel.Quantity,
+				Unit:               sel.Unit,
+				UnitPrice:          sel.UnitPrice,
+				TotalCost:          totalCost,
+				SelectedByUserID:   userID,
+				Notes:              sel.Notes,
+			}
+
+			if err := tx.Create(&newSelection).Error; err != nil {
+				logger.Log.Error("SaveOrderIngredientsWithSupplier create error", "error", err)
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			savedSelections = append(savedSelections, newSelection)
+		} else if findErr != nil {
+			logger.Log.Error("SaveOrderIngredientsWithSupplier find error", "error", findErr)
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": findErr.Error()})
+			return
+		} else {
+			existing.SelectedSupplierID = sel.SelectedSupplierID
+			existing.SelectedProductID = sel.SelectedProductID
+			existing.Quantity = sel.Quantity
+			existing.Unit = sel.Unit
+			existing.UnitPrice = sel.UnitPrice
+			existing.TotalCost = totalCost
+			existing.SelectedByUserID = userID
+			existing.Notes = sel.Notes
+
+			if err := tx.Save(&existing).Error; err != nil {
+				logger.Log.Error("SaveOrderIngredientsWithSupplier update error", "error", err)
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			savedSelections = append(savedSelections, existing)
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier commit error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var responseSelections []models.OrderIngredientSupplier
+	if err := store.DB.GormClient.
+		Preload("Ingredient").
+		Preload("SelectedSupplier").
+		Preload("SelectedProduct").
+		Preload("SelectedBy").
+		Where("order_id = ?", orderID).
+		Find(&responseSelections).Error; err != nil {
+		logger.Log.Error("SaveOrderIngredientsWithSupplier reload error", "error", err)
+		responseSelections = savedSelections
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Supplier selections saved successfully",
+		"orderId":    orderID,
+		"selections": responseSelections,
+		"count":      len(savedSelections),
+	})
+}
+
+// GetOrderSelectedSuppliers returns all selected suppliers and their details for an order
+func GetOrderSelectedSuppliers(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	orderID := c.Param("id")
+	logger.Log.Info("GetOrderSelectedSuppliers called", "order_id", orderID, "user_id", uid)
+
+	// Validate order exists
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
+		logger.Log.Error("GetOrderSelectedSuppliers order not found", "order_id", orderID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	// Get all selected suppliers for this order with all related data
+	var selections []models.OrderIngredientSupplier
+	if err := store.DB.GormClient.
+		Preload("Ingredient").
+		Preload("SelectedSupplier").
+		Preload("SelectedProduct").
+		Preload("SelectedBy").
+		Where("order_id = ?", orderID).
+		Order("ingredient_id ASC").
+		Find(&selections).Error; err != nil {
+		logger.Log.Error("GetOrderSelectedSuppliers query error", "order_id", orderID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orderId":    orderID,
+		"kitchenId":  order.KitchenID,
+		"selections": selections,
+		"count":      len(selections),
+	})
+}
+
+func convertOrderToDTO(o *models.Order, includeChildren bool) models.OrderDTO {
+	dto := models.OrderDTO{
+		OrderID:         o.OrderID,
+		KitchenID:       o.KitchenID,
+		OrderDate:       o.OrderDate,
+		Note:            o.Note,
+		Status:          o.Status,
+		CreatedByUserID: o.CreatedByUserID,
+		CreatedDate:     o.CreatedDate,
+		ModifiedDate:    o.ModifiedDate,
+	}
+	if o.Kitchen != nil {
+		dto.KitchenName = o.Kitchen.KitchenName
+	}
+	if o.CreatedBy != nil {
+		dto.CreatedByName = o.CreatedBy.FullName
+	}
+	if includeChildren {
+		if len(o.Details) > 0 {
+			dto.Details = make([]models.OrderDetailDTO, len(o.Details))
+			for i, d := range o.Details {
+				dto.Details[i] = models.OrderDetailDTO{
+					OrderDetailID: d.OrderDetailID,
+					DishID:        d.DishID,
+					Portions:      d.Portions,
+					Note:          d.Note,
+				}
+				if d.Dish != nil {
+					dto.Details[i].DishName = d.Dish.DishName
+				}
+				if len(d.Ingredients) > 0 {
+					dto.Details[i].Ingredients = make([]models.OrderIngredientDTO, len(d.Ingredients))
+					for j, ing := range d.Ingredients {
+						dto.Details[i].Ingredients[j] = models.OrderIngredientDTO{
+							OrderIngredientID:  ing.OrderIngredientID,
+							IngredientID:       ing.IngredientID,
+							Quantity:           ing.Quantity,
+							Unit:               ing.Unit,
+							StandardPerPortion: ing.StandardPerPortion,
+						}
+						if ing.Ingredient != nil {
+							dto.Details[i].Ingredients[j].IngredientName = ing.Ingredient.IngredientName
+						}
+					}
+				}
+			}
+		}
+		if len(o.SupplementaryFoods) > 0 {
+			dto.Supplementaries = make([]models.OrderSupplementaryDTO, len(o.SupplementaryFoods))
+			for i, s := range o.SupplementaryFoods {
+				dto.Supplementaries[i] = models.OrderSupplementaryDTO{
+					SupplementaryID:    s.SupplementaryID,
+					IngredientID:       s.IngredientID,
+					Quantity:           s.Quantity,
+					Unit:               s.Unit,
+					StandardPerPortion: s.StandardPerPortion,
+					Portions:           s.Portions,
+					Note:               s.Note,
+				}
+				if s.Ingredient != nil {
+					dto.Supplementaries[i].IngredientName = s.Ingredient.IngredientName
+				}
+			}
+		}
+	}
+	return dto
+}
+```
+
+#### handler/recipe_standard.go
+*Language: Go | Size: 7118 bytes*
+
+```go
+package handler
+
+import (
+	"adong-be/logger"
+	"adong-be/models"
+	"adong-be/store"
+	"adong-be/utils"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetRecipeStandards with pagination and search - Returns ResourceCollection format with DTOs
+func GetRecipeStandards(c *gin.Context) {
+	logger.Log.Info("GetRecipeStandards called")
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetRecipeStandards bind query error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.RecipeStandard{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"dish_id", "ingredient_id"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetRecipeStandards count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var recipes []models.RecipeStandard
+	db := store.DB.GormClient.Model(&models.RecipeStandard{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"standardId":   "recipe_id",
+		"dishId":       "dish_id",
+		"ingredientId": "ingredient_id",
+		"standardPer1": "quantity_per_serving",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Dish").Preload("Ingredient").Preload("UpdatedBy")
+
+	if err := db.Find(&recipes).Error; err != nil {
+		logger.Log.Error("GetRecipeStandards query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to DTOs
+	dtos := models.ConvertRecipeStandardsToDTO(recipes)
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dtos,
+		Meta: meta,
+	})
+}
+
+func GetRecipeStandard(c *gin.Context) {
+	logger.Log.Info("GetRecipeStandard called", "id", c.Param("id"))
+	id := c.Param("id")
+	var recipe models.RecipeStandard
+
+	// Preload related entities
+	if err := store.DB.GormClient.
+		Preload("Dish").
+		Preload("Ingredient").
+		Preload("UpdatedBy").
+		First(&recipe, "recipe_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetRecipeStandard not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe standard not found"})
+		return
+	}
+
+	// Convert to DTO and return
+	dto := recipe.ToDTO()
+	c.JSON(http.StatusOK, dto)
+}
+
+func CreateRecipeStandard(c *gin.Context) {
+	logger.Log.Info("CreateRecipeStandard called")
+	var recipe models.RecipeStandard
+	if err := c.ShouldBindJSON(&recipe); err != nil {
+		logger.Log.Error("CreateRecipeStandard bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Create(&recipe).Error; err != nil {
+		logger.Log.Error("CreateRecipeStandard db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload with relationships
+	store.DB.GormClient.
+		Preload("Dish").
+		Preload("Ingredient").
+		Preload("UpdatedBy").
+		First(&recipe, "recipe_id = ?", recipe.StandardID)
+
+	// Return DTO
+	dto := recipe.ToDTO()
+	c.JSON(http.StatusCreated, dto)
+}
+
+func UpdateRecipeStandard(c *gin.Context) {
+	logger.Log.Info("UpdateRecipeStandard called", "id", c.Param("id"))
+	id := c.Param("id")
+	var recipe models.RecipeStandard
+	if err := store.DB.GormClient.First(&recipe, "recipe_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateRecipeStandard not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe standard not found"})
+		return
+	}
+	if err := c.ShouldBindJSON(&recipe); err != nil {
+		logger.Log.Error("UpdateRecipeStandard bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Save(&recipe).Error; err != nil {
+		logger.Log.Error("UpdateRecipeStandard db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload with relationships
+	store.DB.GormClient.
+		Preload("Dish").
+		Preload("Ingredient").
+		Preload("UpdatedBy").
+		First(&recipe, "recipe_id = ?", recipe.StandardID)
+
+	// Return DTO
+	dto := recipe.ToDTO()
+	c.JSON(http.StatusOK, dto)
+}
+
+func DeleteRecipeStandard(c *gin.Context) {
+	logger.Log.Info("DeleteRecipeStandard called", "id", c.Param("id"))
+	id := c.Param("id")
+	if err := store.DB.GormClient.Delete(&models.RecipeStandard{}, "recipe_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteRecipeStandard db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Recipe standard deleted successfully"})
+}
+
+// GetRecipeStandardsByDish with pagination and search - Returns ResourceCollection format with DTOs
+func GetRecipeStandardsByDish(c *gin.Context) {
+	logger.Log.Info("GetRecipeStandardsByDish called", "dishId", c.Param("dishId"))
+	dishId := c.Param("dishId")
+
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.RecipeStandard{}).Where("dish_id = ?", dishId)
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"ingredient_id"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetRecipeStandardsByDish count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var recipes []models.RecipeStandard
+	db := store.DB.GormClient.Model(&models.RecipeStandard{}).Where("dish_id = ?", dishId)
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"ingredientId": "ingredient_id",
+		"standardPer1": "quantity_per_serving",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Dish").Preload("Ingredient").Preload("UpdatedBy")
+
+	if err := db.Find(&recipes).Error; err != nil {
+		logger.Log.Error("GetRecipeStandardsByDish query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to DTOs
+	dtos := models.ConvertRecipeStandardsToDTO(recipes)
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dtos,
+		Meta: meta,
+	})
+}
+```
+
+#### handler/supplier.go
+*Language: Go | Size: 10683 bytes*
+
+```go
+package handler
+
+import (
+	"adong-be/logger"
+	"adong-be/models"
+	"adong-be/store"
+	"adong-be/utils"
+	"net/http"
+	"sort"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+// GetSuppliers with pagination and search - Returns ResourceCollection format
+func GetSuppliers(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetSuppliers called", "user_id", uid)
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetSuppliers bind query error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.Supplier{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"supplier_name", "supplier_id", "address", "phone"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetSuppliers count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var items []models.Supplier
+	db := store.DB.GormClient.Model(&models.Supplier{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"supplier_id":   "supplier_id",
+		"supplier_name": "supplier_name",
+		"address":       "address",
+		"created_date":  "created_date",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	if err := db.Find(&items).Error; err != nil {
+		logger.Log.Error("GetSuppliers query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: items,
+		Meta: meta,
+	})
+}
+
+func GetSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetSupplier called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var item models.Supplier
+	if err := store.DB.GormClient.First(&item, "supplier_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetSupplier not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func CreateSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("CreateSupplier called", "user_id", uid)
+	var item models.Supplier
+	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("CreateSupplier bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Create(&item).Error; err != nil {
+		logger.Log.Error("CreateSupplier db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, item)
+}
+
+func UpdateSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("UpdateSupplier called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var item models.Supplier
+	if err := store.DB.GormClient.First(&item, "supplier_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateSupplier not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
+		return
+	}
+	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("UpdateSupplier bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Save(&item).Error; err != nil {
+		logger.Log.Error("UpdateSupplier db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func DeleteSupplier(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("DeleteSupplier called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	if err := store.DB.GormClient.Delete(&models.Supplier{}, "supplier_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteSupplier db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Supplier deleted successfully"})
+}
+
+// FindBestSuppliers - Find best suppliers for ingredients based on kitchen preferences and pricing
+func FindBestSuppliers(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("FindBestSuppliers called", "user_id", uid)
+
+	var req models.BestSupplierRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Log.Error("FindBestSuppliers bind JSON error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate order exists and belongs to the specified kitchen
+	var order models.Order
+	if err := store.DB.GormClient.Where("order_id = ? AND kitchen_id = ?", req.OrderID, req.KitchenID).First(&order).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found or does not belong to specified kitchen"})
+			return
+		}
+		logger.Log.Error("FindBestSuppliers order validation error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get ingredients with their types and material groups
+	var ingredients []models.Ingredient
+	if err := store.DB.GormClient.Preload("IngredientType").Where("ingredient_id IN ?", req.IngredientIDs).Find(&ingredients).Error; err != nil {
+		logger.Log.Error("FindBestSuppliers ingredients query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(ingredients) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No ingredients found"})
+		return
+	}
+
+	// Get kitchen favorite suppliers
+	var favoriteSuppliers []models.KitchenFavoriteSupplier
+	if err := store.DB.GormClient.Where("kitchen_id = ?", req.KitchenID).Find(&favoriteSuppliers).Error; err != nil {
+		logger.Log.Error("FindBestSuppliers favorite suppliers query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create map of favorite supplier IDs for quick lookup
+	favoriteSupplierMap := make(map[string]bool)
+	for _, fav := range favoriteSuppliers {
+		favoriteSupplierMap[fav.SupplierID] = true
+	}
+
+	// Process each ingredient to find best supplier
+	var result []models.IngredientSupplierInfo
+	for _, ingredient := range ingredients {
+		supplierInfo := findBestSupplierForIngredient(ingredient, favoriteSupplierMap)
+		result = append(result, supplierInfo)
+	}
+
+	response := models.BestSupplierResponse{
+		OrderID:   req.OrderID,
+		KitchenID: req.KitchenID,
+		Suppliers: result,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// findBestSupplierForIngredient - Helper function to find best supplier for a single ingredient
+func findBestSupplierForIngredient(ingredient models.Ingredient, favoriteSupplierMap map[string]bool) models.IngredientSupplierInfo {
+	ingredientTypeName := ""
+	if ingredient.IngredientType != nil {
+		ingredientTypeName = ingredient.IngredientType.IngredientTypeName
+	}
+
+	// Determine selection strategy based on ingredient type
+	useFavoriteStrategy := shouldUseFavoriteStrategy(ingredientTypeName, ingredient.MaterialGroup)
+
+	var supplierPrices []models.SupplierPrice
+	query := store.DB.GormClient.Preload("Supplier").Where("ingredient_id = ? AND active = ?", ingredient.IngredientID, true)
+
+	if useFavoriteStrategy {
+		// For favorite strategy, prioritize kitchen's favorite suppliers
+		var favoriteIDs []string
+		for id := range favoriteSupplierMap {
+			favoriteIDs = append(favoriteIDs, id)
+		}
+		if len(favoriteIDs) > 0 {
+			query = query.Where("supplier_id IN ?", favoriteIDs)
+		}
+	}
+
+	query.Find(&supplierPrices)
+
+	if len(supplierPrices) == 0 {
+		// If no suppliers found with favorite strategy, try all suppliers
+		if useFavoriteStrategy {
+			store.DB.GormClient.Preload("Supplier").Where("ingredient_id = ? AND active = ?", ingredient.IngredientID, true).Find(&supplierPrices)
+		}
+	}
+
+	var selectedSupplier *models.SupplierInfo
+	var selectionReason string
+
+	if len(supplierPrices) > 0 {
+		if useFavoriteStrategy {
+			// For favorite strategy, sort by display order (if available) then by price
+			sort.Slice(supplierPrices, func(i, j int) bool {
+				// Prioritize favorite suppliers
+				isFavI := favoriteSupplierMap[supplierPrices[i].SupplierID]
+				isFavJ := favoriteSupplierMap[supplierPrices[j].SupplierID]
+				if isFavI != isFavJ {
+					return isFavI
+				}
+				// If both are favorites or both are not, sort by price
+				return supplierPrices[i].UnitPrice < supplierPrices[j].UnitPrice
+			})
+			selectionReason = "Kitchen favorite supplier (lowest price among favorites)"
+		} else {
+			// For price strategy, sort by lowest price
+			sort.Slice(supplierPrices, func(i, j int) bool {
+				return supplierPrices[i].UnitPrice < supplierPrices[j].UnitPrice
+			})
+			selectionReason = "Lowest price supplier"
+		}
+
+		bestPrice := supplierPrices[0]
+		selectedSupplier = &models.SupplierInfo{
+			SupplierID:   bestPrice.SupplierID,
+			SupplierName: bestPrice.Supplier.SupplierName,
+			Phone:        bestPrice.Supplier.Phone,
+			Email:        bestPrice.Supplier.Email,
+			Address:      bestPrice.Supplier.Address,
+			UnitPrice:    bestPrice.UnitPrice,
+			Unit:         bestPrice.Unit,
+			ProductName:  bestPrice.ProductName,
+			ProductID:    bestPrice.ProductID,
+		}
+	}
+
+	return models.IngredientSupplierInfo{
+		IngredientID:     ingredient.IngredientID,
+		IngredientName:   ingredient.IngredientName,
+		IngredientType:   ingredientTypeName,
+		MaterialGroup:    ingredient.MaterialGroup,
+		SelectedSupplier: selectedSupplier,
+		SelectionReason:  selectionReason,
+	}
+}
+
+// shouldUseFavoriteStrategy - Determine if ingredient should use favorite supplier strategy
+func shouldUseFavoriteStrategy(ingredientType, materialGroup string) bool {
+	// Use favorite strategy for vegetables, meat, beans, eggs
+	favoriteTypes := map[string]bool{
+		"VEGETABLE": true,
+		"MEAT":      true,
+		"DAIRY":     true, // includes eggs
+		"GRAIN":     true, // includes beans
+	}
+
+	// Check ingredient type first
+	if favoriteTypes[ingredientType] {
+		return true
+	}
+
+	// Check material group for specific cases
+	favoriteGroups := map[string]bool{
+		"Thịt heo":     true,
+		"Thịt bò":      true,
+		"Thịt gia cầm": true,
+		"Trứng":        true,
+		"Gạo":          true,
+		"Bún phở":      true,
+		"Củ quả":       true,
+		"Rau xanh":     true,
+		"Củ":           true,
+	}
+
+	return favoriteGroups[materialGroup]
+}
+```
+
+#### handler/supplier_price.go
+*Language: Go | Size: 11747 bytes*
+
+```go
+package handler
+
+import (
+	"adong-be/logger"
+	"adong-be/models"
+	"adong-be/store"
+	"adong-be/utils"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+func GetSupplierPrices(c *gin.Context) {
+	logger.Log.Info("GetSupplierPrices called")
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetSupplierPrices bind query error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get date range parameters
+	effectiveFrom := c.Query("effective_from")
+	effectiveTo := c.Query("effective_to")
+	logger.Log.Debug("receive query", "Effective From:", effectiveFrom, "Effective To:", effectiveTo)
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.SupplierPrice{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"product_name", "ingredient_id", "supplier_id",
+		 "classification", "specification", "manufacturer_name"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	// Apply date range filters for counting
+	countDB = applyDateRangeFilter(countDB, effectiveFrom, effectiveTo)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetSupplierPrices count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var prices []models.SupplierPrice
+	db := store.DB.GormClient.Model(&models.SupplierPrice{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	// Apply date range filters for data query
+	db = applyDateRangeFilter(db, effectiveFrom, effectiveTo)
+
+	allowedSortFields := map[string]string{
+		"product_id":     "product_id",
+		"product_name":   "product_name",
+		"ingredient_id":  "ingredient_id",
+		"supplier_id":    "supplier_id",
+		"unit_price":     "unit_price",
+		"effective_from": "effective_from",
+		"effective_to":   "effective_to",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Ingredient").Preload("Supplier")
+
+	if err := db.Find(&prices).Error; err != nil {
+		logger.Log.Error("GetSupplierPrices query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to DTOs
+	dtos := models.ConvertSupplierPricesToDTO(prices)
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dtos,
+		Meta: meta,
+	})
+}
+
+// Helper function to apply date range filters
+func applyDateRangeFilter(db *gorm.DB, effectiveFrom, effectiveTo string) *gorm.DB {
+	// // Parse and validate effectiveFrom date
+	// if effectiveFrom != "" {
+	// 	// Parse the date string (format: YYYY-MM-DD)
+	// 	fromDate, err := time.Parse("2006-01-02", effectiveFrom)
+	// 	if err == nil {
+	// 		// Filter records where hieuluctu >= effectiveFrom OR hieulucden >= effectiveFrom
+	// 		// This ensures we get prices that are effective during or after the from date
+	// 		db = db.Where("hieuluctu >= ?", fromDate)
+	// 	}
+	// }
+
+	// // Parse and validate effectiveTo date
+	// if effectiveTo != "" {
+	// 	// Parse the date string (format: YYYY-MM-DD)
+	// 	toDate, err := time.Parse("2006-01-02", effectiveTo)
+	// 	if err == nil {
+	// 		// Add 1 day to include the entire end date
+	// 		toDateEnd := toDate.Add(24 * time.Hour)
+	// 		// Filter records where hieuluctu <= effectiveTo
+	// 		// This ensures we get prices that start before or on the to date
+	// 		db = db.Where("hieulucden < ?", toDateEnd)
+	// 	}
+	// }
+
+	if effectiveFrom == "" {
+		effectiveFrom = "0001-01-01"
+	}
+	if effectiveTo == "" {
+		effectiveTo = "9999-12-31"
+	}
+
+	// If both dates are provided, find prices that overlap with the date range
+	if effectiveFrom != "" && effectiveTo != "" {
+		fromDate, errFrom := time.Parse("2006-01-02", effectiveFrom)
+		toDate, errTo := time.Parse("2006-01-02", effectiveTo)
+
+		if errFrom == nil && errTo == nil {
+			// toDateEnd := toDate.Add(24 * time.Hour)
+			// Records where:
+			// - Start date is within range, OR
+			// - End date is within range, OR
+			// - The price period encompasses the entire search range
+			db = db.Where(
+				"(effective_from IS NULL OR effective_to IS NULL) OR (effective_from >= ? AND effective_to <= ?)",
+				fromDate, toDate,
+			)
+		}
+	}
+
+	return db
+}
+
+func GetSupplierPrice(c *gin.Context) {
+	logger.Log.Info("GetSupplierPrice called", "id", c.Param("id"))
+	id := c.Param("id")
+	var price models.SupplierPrice
+
+	// Preload related entities to get names
+	if err := store.DB.GormClient.
+		Preload("Ingredient").
+		Preload("Supplier").
+		First(&price, "product_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetSupplierPrice not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier price not found"})
+		return
+	}
+
+	// Convert to DTO and return
+	dto := price.ToDTO()
+	c.JSON(http.StatusOK, dto)
+}
+
+// GetSupplierPricesByIngredient - Get all supplier prices for a specific ingredient
+func GetSupplierPricesByIngredient(c *gin.Context) {
+	logger.Log.Info("GetSupplierPricesByIngredient called", "ingredientId", c.Param("ingredientId"))
+	ingredientId := c.Param("ingredientId")
+
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("ingredient_id = ?", ingredientId)
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"tensanpham", "nhacungcapid", "phanloai"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetSupplierPricesByIngredient count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var prices []models.SupplierPrice
+	db := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("ingredient_id = ?", ingredientId)
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"product_id":     "product_id",
+		"product_name":   "product_name",
+		"supplier_id":    "supplier_id",
+		"unit_price":     "unit_price",
+		"effective_from": "effective_from",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Ingredient").Preload("Supplier")
+
+	if err := db.Find(&prices).Error; err != nil {
+		logger.Log.Error("GetSupplierPricesByIngredient query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to DTOs
+	dtos := models.ConvertSupplierPricesToDTO(prices)
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dtos,
+		Meta: meta,
+	})
+}
+
+// GetSupplierPricesBySupplier - Get all supplier prices for a specific supplier
+func GetSupplierPricesBySupplier(c *gin.Context) {
+	logger.Log.Info("GetSupplierPricesBySupplier called", "supplierId", c.Param("supplierId"))
+	supplierId := c.Param("supplierId")
+
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("supplier_id = ?", supplierId)
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"tensanpham", "nguyenlieuid", "phanloai"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetSupplierPricesBySupplier count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var prices []models.SupplierPrice
+	db := store.DB.GormClient.Model(&models.SupplierPrice{}).Where("supplier_id = ?", supplierId)
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"product_id":     "product_id",
+		"product_name":   "product_name",
+		"ingredient_id":  "ingredient_id",
+		"unit_price":     "unit_price",
+		"effective_from": "effective_from",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Ingredient").Preload("Supplier")
+
+	if err := db.Find(&prices).Error; err != nil {
+		logger.Log.Error("GetSupplierPricesBySupplier query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to DTOs
+	dtos := models.ConvertSupplierPricesToDTO(prices)
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dtos,
+		Meta: meta,
+	})
+}
+
+func CreateSupplierPrice(c *gin.Context) {
+	logger.Log.Info("CreateSupplierPrice called")
+	var price models.SupplierPrice
+	if err := c.ShouldBindJSON(&price); err != nil {
+		logger.Log.Error("CreateSupplierPrice bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Create(&price).Error; err != nil {
+		logger.Log.Error("CreateSupplierPrice db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload with relationships to get names
+	store.DB.GormClient.
+		Preload("Ingredient").
+		Preload("Supplier").
+		First(&price, "product_id = ?", price.ProductID)
+
+	// Return DTO with names
+	dto := price.ToDTO()
+	c.JSON(http.StatusCreated, dto)
+}
+
+func UpdateSupplierPrice(c *gin.Context) {
+	logger.Log.Info("UpdateSupplierPrice called", "id", c.Param("id"))
+	id := c.Param("id")
+	var price models.SupplierPrice
+	if err := store.DB.GormClient.First(&price, "product_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateSupplierPrice not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Supplier price not found"})
+		return
+	}
+	if err := c.ShouldBindJSON(&price); err != nil {
+		logger.Log.Error("UpdateSupplierPrice bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Save(&price).Error; err != nil {
+		logger.Log.Error("UpdateSupplierPrice db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload with relationships to get names
+	store.DB.GormClient.
+		Preload("Ingredient").
+		Preload("Supplier").
+		First(&price, "product_id = ?", price.ProductID)
+
+	// Return DTO with names
+	dto := price.ToDTO()
+	c.JSON(http.StatusOK, dto)
+}
+
+func DeleteSupplierPrice(c *gin.Context) {
+	logger.Log.Info("DeleteSupplierPrice called", "id", c.Param("id"))
+	id := c.Param("id")
+	if err := store.DB.GormClient.Delete(&models.SupplierPrice{}, "product_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteSupplierPrice db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Supplier price deleted successfully"})
+}
+```
+
+#### handler/user.go
+*Language: Go | Size: 4253 bytes*
+
+```go
+package handler
+
+import (
+	"adong-be/models"
+	"adong-be/logger"
+	"adong-be/store"
+	"adong-be/utils"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetUsers with pagination and search - Returns ResourceCollection format
+func GetUsers(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("GetUsers called", "user_id", uid)
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		logger.Log.Error("GetUsers bind query error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.User{})
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"user_id", "user_name", "full_name", "email", "phone"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetUsers count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var items []models.User
+	db := store.DB.GormClient.Model(&models.User{})
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"user_id":   "user_id",
+		"user_name": "user_name",
+		"full_name": "full_name",
+		"email":     "email",
+		"role":      "role",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	if err := db.Find(&items).Error; err != nil {
+		logger.Log.Error("GetUsers query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: items,
+		Meta: meta,
+	})
+}
+
+func GetUser(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("GetUser called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var item models.User
+	if err := store.DB.GormClient.First(&item, "user_id = ?", id).Error; err != nil {
+		logger.Log.Error("GetUser not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func CreateUser(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("CreateUser called", "user_id", uid)
+	var item models.User
+	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("CreateUser bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Create(&item).Error; err != nil {
+		logger.Log.Error("CreateUser db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, item)
+}
+
+func UpdateUser(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("UpdateUser called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	var item models.User
+	if err := store.DB.GormClient.First(&item, "user_id = ?", id).Error; err != nil {
+		logger.Log.Error("UpdateUser not found", "id", id, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	if err := c.ShouldBindJSON(&item); err != nil {
+		logger.Log.Error("UpdateUser bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := store.DB.GormClient.Save(&item).Error; err != nil {
+		logger.Log.Error("UpdateUser db error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func DeleteUser(c *gin.Context) {
+    uid, _ := c.Get("identity")
+    logger.Log.Info("DeleteUser called", "id", c.Param("id"), "user_id", uid)
+	id := c.Param("id")
+	if err := store.DB.GormClient.Delete(&models.User{}, "user_id = ?", id).Error; err != nil {
+		logger.Log.Error("DeleteUser db error", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+```
+
+### logger/
+
+#### logger/logger.go
+*Language: Go | Size: 1074 bytes*
+
+```go
+package logger
+
+import (
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+type LoggerI interface {
+
+	Info(msg string, args ...interface{})
+	Warn(msg string, args ...interface{})
+	Error(msg string, args ...interface{})
+	Debug(msg string, args ...interface{})
+
+}
+
+
+type Logger struct {
+	*zap.SugaredLogger
+}
+
+func NewLogger() *Logger {
+	// set caller skip to 2
+	cfg := zap.NewProductionConfig()
+	
+	cfg.Level.SetLevel(zapcore.DebugLevel) // Set the desired level (e.g., InfoLevel)
+	logger, _ := cfg.Build()
+	logger = logger.WithOptions(zap.AddCallerSkip(1))
+	
+	sugar := logger.Sugar()
+	
+	return &Logger{
+		SugaredLogger: sugar,
+	}
+}
+
+func (l *Logger) Info(msg string, args ...interface{}) {
+	l.SugaredLogger.With(args...).Info(msg)
+}
+
+func (l *Logger) Warn(msg string, args ...interface{}) {
+	l.SugaredLogger.With(args...).Warn(msg)
+}
+
+func (l *Logger) Error(msg string, args ...interface{}) {
+	l.SugaredLogger.With(args...).Error(msg)
+}
+
+func (l *Logger) Debug(msg string, args ...interface{}) {
+	l.SugaredLogger.With(args...).Debug(msg)
+}
+
+var (
+	Log  LoggerI = NewLogger()
+)
+```
+
+### models/
+
+#### models/common.go
+*Language: Go | Size: 17 bytes*
+
+```go
+package models
+
+
+```
+
+#### models/dish.go
+*Language: Go | Size: 816 bytes*
+
+```go
+package models
+
+import "time"
+
+// Dish - Master data for dishes/menu items (dm_monan)
+type Dish struct {
+    DishID        string    `gorm:"primaryKey;column:dish_id" json:"dishId"`
+    DishName      string    `gorm:"column:dish_name;not null" json:"dishName"`
+    CookingMethod string    `gorm:"column:cooking_method" json:"cookingMethod"`
+    Group         string    `gorm:"column:category" json:"group"`
+    Description   string    `gorm:"column:description;type:text" json:"description"`
+	Active        *bool     `gorm:"column:active;default:true" json:"active"`
+    CreatedDate   time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+    ModifiedDate  time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+}
+
+func (Dish) TableName() string {
+    return "master_dishes"
+}
+```
+
+#### models/ingredient.go
+*Language: Go | Size: 1785 bytes*
+
+```go
+package models
+
+import "time"
+
+// IngredientType - Lookup table for ingredient categories
+type IngredientType struct {
+	IngredientTypeID   string    `gorm:"primaryKey;column:ingredient_type_id" json:"ingredientTypeId"`
+	IngredientTypeName string    `gorm:"column:ingredient_type_name;not null;unique" json:"ingredientTypeName"`
+	Description        string    `gorm:"column:description" json:"description"`
+	Active             bool      `gorm:"column:active;not null;default:true" json:"active"`
+	CreatedDate        time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate       time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+}
+
+func (IngredientType) TableName() string {
+	return "ingredient_types"
+}
+
+// Ingredient - Master data for raw materials and ingredients (dm_nvl)
+type Ingredient struct {
+	IngredientID     string          `gorm:"primaryKey;column:ingredient_id" json:"ingredientId"`
+	IngredientName   string          `gorm:"column:ingredient_name;not null;unique" json:"ingredientName"`
+	IngredientTypeID *string         `gorm:"column:ingredient_type_id" json:"ingredientTypeId"`
+	Property         string          `gorm:"column:properties" json:"property"`
+	MaterialGroup    string          `gorm:"column:material_group" json:"materialGroup"`
+	Unit             string          `gorm:"column:unit;not null" json:"unit"`
+	CreatedDate      time.Time       `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate     time.Time       `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+	IngredientType   *IngredientType `gorm:"foreignKey:IngredientTypeID;references:IngredientTypeID" json:"ingredientType,omitempty"`
+}
+
+func (Ingredient) TableName() string {
+	return "master_ingredients"
+}
+```
+
+#### models/kitchen.go
+*Language: Go | Size: 2066 bytes*
+
+```go
+package models
+
+import "time"
+
+// Kitchen - Master data for kitchen/location information (dm_bep)
+type Kitchen struct {
+	KitchenID    string    `gorm:"primaryKey;column:kitchen_id" json:"kitchenId"`
+	KitchenName  string    `gorm:"column:kitchen_name;not null" json:"kitchenName"`
+	Address      string    `gorm:"column:address;type:text" json:"address"`
+	Phone        string    `gorm:"column:phone" json:"phone"`
+	Active       *bool     `gorm:"column:active;default:true" json:"active"`
+	CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	FavoriteSuppliers []KitchenFavoriteSupplier `gorm:"foreignKey:KitchenID;references:KitchenID" json:"favoriteSuppliers,omitempty"`
+}
+
+func (Kitchen) TableName() string {
+	return "master_kitchens"
+}
+
+// KitchenFavoriteSupplier - Kitchen's favorite suppliers
+type KitchenFavoriteSupplier struct {
+	FavoriteID      int       `gorm:"primaryKey;autoIncrement;column:favorite_id" json:"favoriteId"`
+	KitchenID       string    `gorm:"column:kitchen_id;not null" json:"kitchenId"`
+	SupplierID      string    `gorm:"column:supplier_id;not null" json:"supplierId"`
+	Notes           string    `gorm:"column:notes;type:text" json:"notes"`
+	DisplayOrder    int       `gorm:"column:display_order" json:"displayOrder"`
+	CreatedByUserID string    `gorm:"column:created_by_user_id" json:"createdByUserId"`
+	CreatedDate     time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate    time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	Kitchen    *Kitchen  `gorm:"foreignKey:KitchenID;references:KitchenID" json:"kitchen,omitempty"`
+	Supplier   *Supplier `gorm:"foreignKey:SupplierID;references:SupplierID" json:"supplier,omitempty"`
+	CreatedBy  *User     `gorm:"foreignKey:CreatedByUserID;references:UserID" json:"createdBy,omitempty"`
+}
+
+func (KitchenFavoriteSupplier) TableName() string {
+	return "kitchen_favorite_suppliers"
+}
+```
+
+#### models/order.go
+*Language: Go | Size: 7247 bytes*
+
+```go
+// models/order.go
+package models
+
+import "time"
+
+// Order - Orders (orders)
+type Order struct {
+	OrderID         string    `gorm:"primaryKey;column:order_id;type:varchar(50)" json:"orderId"`
+	KitchenID       string    `gorm:"column:kitchen_id;not null" json:"kitchenId"`
+	OrderDate       string    `gorm:"column:order_date;not null" json:"orderDate"`
+	Note            string    `gorm:"column:note;type:text" json:"note"`
+	Status          string    `gorm:"column:status;default:Pending;not null" json:"status"`
+	CreatedByUserID string    `gorm:"column:created_by_user_id" json:"createdByUserId"`
+	CreatedDate     time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate    time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	Kitchen            *Kitchen                 `gorm:"foreignKey:KitchenID;references:KitchenID" json:"kitchen,omitempty"`
+	CreatedBy          *User                    `gorm:"foreignKey:CreatedByUserID;references:UserID" json:"createdBy,omitempty"`
+	Details            []OrderDetail            `gorm:"foreignKey:OrderID;references:OrderID" json:"details,omitempty"`
+	SupplementaryFoods []OrderSupplementaryFood `gorm:"foreignKey:OrderID;references:OrderID" json:"supplementaryFoods,omitempty"`
+}
+
+func (Order) TableName() string {
+	return "orders"
+}
+
+// OrderDetail - Order details (order_details)
+type OrderDetail struct {
+	OrderDetailID int       `gorm:"primaryKey;autoIncrement;column:order_detail_id" json:"orderDetailId"`
+	OrderID       string    `gorm:"column:order_id;type:varchar(50);not null" json:"orderId"`
+	DishID        string    `gorm:"column:dish_id;not null" json:"dishId"`
+	Portions      int       `gorm:"column:portions;not null" json:"portions"`
+	Note          string    `gorm:"column:note;type:text" json:"note"`
+	CreatedDate   time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate  time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	Order       *Order            `gorm:"foreignKey:OrderID;references:OrderID" json:"order,omitempty"`
+	Dish        *Dish             `gorm:"foreignKey:DishID;references:DishID" json:"dish,omitempty"`
+	Ingredients []OrderIngredient `gorm:"foreignKey:OrderDetailID;references:OrderDetailID" json:"ingredients,omitempty"`
+}
+
+func (OrderDetail) TableName() string {
+	return "order_details"
+}
+
+// OrderIngredient - Ingredients calculated for an order detail (order_ingredients)
+type OrderIngredient struct {
+	OrderIngredientID  int       `gorm:"primaryKey;autoIncrement;column:order_ingredient_id" json:"orderIngredientId"`
+	OrderDetailID      int       `gorm:"column:order_detail_id;not null" json:"orderDetailId"`
+	IngredientID       string    `gorm:"column:ingredient_id;not null" json:"ingredientId"`
+	Quantity           float64   `gorm:"column:quantity;type:numeric(15,4);not null" json:"quantity"`
+	Unit               string    `gorm:"column:unit;not null" json:"unit"`
+	StandardPerPortion float64   `gorm:"column:standard_per_portion;type:numeric(10,4)" json:"standardPerPortion"`
+	CreatedDate        time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate       time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	OrderDetail *OrderDetail `gorm:"foreignKey:OrderDetailID;references:OrderDetailID" json:"orderDetail,omitempty"`
+	Ingredient  *Ingredient  `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
+}
+
+func (OrderIngredient) TableName() string {
+	return "order_ingredients"
+}
+
+// OrderSupplementaryFood - Extra items for an order (order_supplementary_foods)
+type OrderSupplementaryFood struct {
+	SupplementaryID    int       `gorm:"primaryKey;autoIncrement;column:supplementary_id" json:"supplementaryId"`
+	OrderID            string    `gorm:"column:order_id;type:varchar(50);not null" json:"orderId"`
+	IngredientID       string    `gorm:"column:ingredient_id;not null" json:"ingredientId"`
+	Quantity           float64   `gorm:"column:quantity;type:numeric(15,4);not null" json:"quantity"`
+	Unit               string    `gorm:"column:unit;not null" json:"unit"`
+	StandardPerPortion float64   `gorm:"column:standard_per_portion;type:numeric(10,4)" json:"standardPerPortion"`
+	Portions           int       `gorm:"column:portions" json:"portions"`
+	Note               string    `gorm:"column:note;type:text" json:"note"`
+	CreatedDate        time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate       time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	Order      *Order      `gorm:"foreignKey:OrderID;references:OrderID" json:"order,omitempty"`
+	Ingredient *Ingredient `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
+}
+
+func (OrderSupplementaryFood) TableName() string {
+	return "order_supplementary_foods"
+}
+
+// OrderIngredientSupplier - Selected supplier for each ingredient in an order (order_ingredient_suppliers)
+type OrderIngredientSupplier struct {
+	OrderIngredientSupplierID int       `gorm:"primaryKey;autoIncrement;column:order_ingredient_supplier_id" json:"orderIngredientSupplierId"`
+	OrderID                  string    `gorm:"column:order_id;type:varchar(50);not null" json:"orderId"`
+	IngredientID             string    `gorm:"column:ingredient_id;not null" json:"ingredientId"`
+	SelectedSupplierID       string    `gorm:"column:selected_supplier_id;not null" json:"selectedSupplierId"`
+	SelectedProductID        int       `gorm:"column:selected_product_id;not null" json:"selectedProductId"`
+	Quantity                 float64   `gorm:"column:quantity;type:numeric(15,4);not null" json:"quantity"`
+	Unit                     string    `gorm:"column:unit;not null" json:"unit"`
+	UnitPrice                float64   `gorm:"column:unit_price;type:numeric(15,2);not null" json:"unitPrice"`
+	TotalCost                float64   `gorm:"column:total_cost;type:numeric(15,2);not null" json:"totalCost"`
+	SelectionDate            time.Time `gorm:"column:selection_date;default:CURRENT_TIMESTAMP" json:"selectionDate"`
+	SelectedByUserID         string    `gorm:"column:selected_by_user_id" json:"selectedByUserId"`
+	Notes                    string    `gorm:"column:notes;type:text" json:"notes"`
+	CreatedDate              time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate             time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	Order            *Order        `gorm:"foreignKey:OrderID;references:OrderID" json:"order,omitempty"`
+	Ingredient       *Ingredient   `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
+	SelectedSupplier *Supplier     `gorm:"foreignKey:SelectedSupplierID;references:SupplierID" json:"selectedSupplier,omitempty"`
+	SelectedProduct  *SupplierPrice `gorm:"foreignKey:SelectedProductID;references:ProductID" json:"selectedProduct,omitempty"`
+	SelectedBy       *User         `gorm:"foreignKey:SelectedByUserID;references:UserID" json:"selectedBy,omitempty"`
+}
+
+func (OrderIngredientSupplier) TableName() string {
+	return "order_ingredient_suppliers"
+}
+```
+
+#### models/order_dto.go
+*Language: Go | Size: 2131 bytes*
+
+```go
+package models
+
+import "time"
+
+// OrderDTO - Aggregated response for an order
+type OrderDTO struct {
+	OrderID         string                  `json:"orderId"`
+	KitchenID       string                  `json:"kitchenId"`
+	KitchenName     string                  `json:"kitchenName"`
+	OrderDate       string                  `json:"orderDate"`
+	Note            string                  `json:"note"`
+	Status          string                  `json:"status"`
+	CreatedByUserID string                  `json:"createdByUserId"`
+	CreatedByName   string                  `json:"createdByName"`
+	CreatedDate     time.Time               `json:"createdDate"`
+	ModifiedDate    time.Time               `json:"modifiedDate"`
+	Details         []OrderDetailDTO        `json:"details"`
+	Supplementaries []OrderSupplementaryDTO `json:"supplementaries"`
+}
+
+// OrderDetailDTO - Detail lines with dish name and ingredients
+type OrderDetailDTO struct {
+	OrderDetailID int                  `json:"orderDetailId"`
+	DishID        string               `json:"dishId"`
+	DishName      string               `json:"dishName"`
+	Portions      int                  `json:"portions"`
+	Note          string               `json:"note"`
+	Ingredients   []OrderIngredientDTO `json:"ingredients"`
+}
+
+// OrderIngredientDTO - Ingredient usage per detail
+type OrderIngredientDTO struct {
+	OrderIngredientID  int     `json:"orderIngredientId"`
+	IngredientID       string  `json:"ingredientId"`
+	IngredientName     string  `json:"ingredientName"`
+	Quantity           float64 `json:"quantity"`
+	Unit               string  `json:"unit"`
+	StandardPerPortion float64 `json:"standardPerPortion"`
+}
+
+// OrderSupplementaryDTO - Supplementary items for an order
+type OrderSupplementaryDTO struct {
+	SupplementaryID    int     `json:"supplementaryId"`
+	IngredientID       string  `json:"ingredientId"`
+	IngredientName     string  `json:"ingredientName"`
+	Quantity           float64 `json:"quantity"`
+	Unit               string  `json:"unit"`
+	StandardPerPortion float64 `json:"standardPerPortion"`
+	Portions           int     `json:"portions"`
+	Note               string  `json:"note"`
+}
+```
+
+#### models/pagination.go
+*Language: Go | Size: 2231 bytes*
+
+```go
+package models
+
+// PaginationParams contains pagination parameters from query string
+type PaginationParams struct {
+	Page     int    `form:"page" binding:"omitempty,min=0"`
+	PageSize int    `form:"per_page" binding:"omitempty,min=0,max=100"` // Changed to per_page to match common conventions
+	Search   string `form:"search"`
+	SortBy   string `form:"sort_by"`
+	SortDir  string `form:"sort_dir" binding:"omitempty,oneof=asc desc"`
+}
+
+// PaginationMeta contains pagination metadata matching frontend ResourceCollection interface
+type PaginationMeta struct {
+	CurrentPage int `json:"current_page"`
+	LastPage    int `json:"last_page"`
+	From        int `json:"from"`
+	To          int `json:"to"`
+	PerPage     int `json:"per_page"`
+	Total       int `json:"total"`
+}
+
+// ResourceCollection is the response wrapper matching frontend interface
+type ResourceCollection struct {
+	Data interface{}     `json:"data"`
+	Meta *PaginationMeta `json:"meta"`
+}
+
+// GetPaginationParams extracts and validates pagination parameters with defaults
+func GetPaginationParams(page, pageSize int, search, sortBy, sortDir string) PaginationParams {
+	// Set defaults
+	// if page < 1 {
+	// 	page = 1
+	// }
+	// if pageSize < 1 {
+	// 	pageSize = 10
+	// }
+	// if pageSize > 100 {
+	// 	pageSize = 100
+	// }
+	if sortDir == "" {
+		sortDir = "asc"
+	}
+
+	return PaginationParams{
+		Page:     page,
+		PageSize: pageSize,
+		Search:   search,
+		SortBy:   sortBy,
+		SortDir:  sortDir,
+	}
+}
+
+// CalculatePaginationMeta calculates pagination metadata
+func CalculatePaginationMeta(page, perPage int, total int64) *PaginationMeta {
+	if perPage < 1 || page < 1 {
+		return &PaginationMeta{
+			CurrentPage: page,
+			LastPage:    1,
+			From:        0,
+			To:          int(total),
+			PerPage:     perPage,
+			Total:       int(total),
+		}
+	}
+	totalInt := int(total)
+	lastPage := (totalInt + perPage - 1) / perPage
+	if lastPage < 1 {
+		lastPage = 1
+	}
+
+	// Calculate from and to
+	from := 0
+	to := 0
+	if totalInt > 0 {
+		from = (page-1)*perPage + 1
+		to = from + perPage - 1
+		if to > totalInt {
+			to = totalInt
+		}
+	}
+
+	return &PaginationMeta{
+		CurrentPage: page,
+		LastPage:    lastPage,
+		From:        from,
+		To:          to,
+		PerPage:     perPage,
+		Total:       totalInt,
+	}
+}
+```
+
+#### models/recipe_standard.go
+*Language: Go | Size: 1319 bytes*
+
+```go
+package models
+
+import "time"
+
+// RecipeStandard - Bill of materials for dishes (dish_recipe_standards)
+type RecipeStandard struct {
+	StandardID   int       `gorm:"primaryKey;autoIncrement;column:recipe_id" json:"standardId"`
+	DishID       string    `gorm:"column:dish_id" json:"dishId"`
+	IngredientID string    `gorm:"column:ingredient_id" json:"ingredientId"`
+	Unit         string    `gorm:"column:unit" json:"unit"`
+	StandardPer1 float64   `gorm:"column:quantity_per_serving;type:decimal(10,4)" json:"standardPer1"`
+	Note         string    `gorm:"column:notes;type:text" json:"note"`
+	Amount       float64   `gorm:"column:cost;type:decimal(15,2)" json:"amount"`
+	UpdatedByID  string    `gorm:"column:updated_by_user_id" json:"updatedById"`
+	CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	Dish       *Dish       `gorm:"foreignKey:DishID;references:DishID" json:"dish,omitempty"`
+	Ingredient *Ingredient `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
+	UpdatedBy  *User       `gorm:"foreignKey:UpdatedByID;references:UserID" json:"updatedBy,omitempty"`
+}
+
+func (RecipeStandard) TableName() string {
+	return "dish_recipe_standards"
+}
+```
+
+#### models/recipe_standard_dto.go
+*Language: Go | Size: 1819 bytes*
+
+```go
+package models
+
+import "time"
+
+// RecipeStandardDTO - Data Transfer Object for Recipe Standard with related names
+type RecipeStandardDTO struct {
+	StandardID     int       `json:"standardId"`
+	DishID         string    `json:"dishId"`
+	DishName       string    `json:"dishName"`           // Added: Dish name
+	IngredientID   string    `json:"ingredientId"`
+	IngredientName string    `json:"ingredientName"`     // Added: Ingredient name
+	Unit           string    `json:"unit"`
+	StandardPer1   float64   `json:"standardPer1"`
+	Note           string    `json:"note"`
+	Amount         float64   `json:"amount"`
+	UpdatedByID    string    `json:"updatedById"`
+	UpdatedByName  string    `json:"updatedByName"`      // Added: User name (optional)
+	CreatedDate    time.Time `json:"createdDate"`
+	ModifiedDate   time.Time `json:"modifiedDate"`
+}
+
+// ToDTO converts RecipeStandard model to DTO
+func (r *RecipeStandard) ToDTO() RecipeStandardDTO {
+	dto := RecipeStandardDTO{
+		StandardID:   r.StandardID,
+		DishID:       r.DishID,
+		IngredientID: r.IngredientID,
+		Unit:         r.Unit,
+		StandardPer1: r.StandardPer1,
+		Note:         r.Note,
+		Amount:       r.Amount,
+		UpdatedByID:  r.UpdatedByID,
+		CreatedDate:  r.CreatedDate,
+		ModifiedDate: r.ModifiedDate,
+	}
+
+	// Populate names from relationships if available
+	if r.Dish != nil {
+		dto.DishName = r.Dish.DishName
+	}
+	if r.Ingredient != nil {
+		dto.IngredientName = r.Ingredient.IngredientName
+	}
+	if r.UpdatedBy != nil {
+		dto.UpdatedByName = r.UpdatedBy.FullName
+	}
+
+	return dto
+}
+
+// ConvertToDTO converts a slice of RecipeStandard to a slice of RecipeStandardDTO
+func ConvertRecipeStandardsToDTO(recipes []RecipeStandard) []RecipeStandardDTO {
+	dtos := make([]RecipeStandardDTO, len(recipes))
+	for i, recipe := range recipes {
+		dtos[i] = recipe.ToDTO()
+	}
+	return dtos
+}
+```
+
+#### models/supplier.go
+*Language: Go | Size: 2365 bytes*
+
+```go
+package models
+
+import "time"
+
+// Supplier - Master data for suppliers (dm_ncc)
+type Supplier struct {
+	SupplierID   string    `gorm:"primaryKey;column:supplier_id" json:"supplierId"`
+	SupplierName string    `gorm:"column:supplier_name;not null" json:"supplierName"`
+	ZaloLink     string    `gorm:"column:zalo_link;type:text" json:"zaloLink"`
+	Address      string    `gorm:"column:address;type:text" json:"address"`
+	Phone        string    `gorm:"column:phone" json:"phone"`
+	Email        string    `gorm:"column:email" json:"email"`
+	Active       *bool     `gorm:"column:active;default:true" json:"active"`
+	CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+}
+
+func (Supplier) TableName() string {
+	return "master_suppliers"
+}
+
+// BestSupplierRequest - Request to find best suppliers for ingredients in an order
+type BestSupplierRequest struct {
+	OrderID       string   `json:"orderId" binding:"required"`
+	KitchenID     string   `json:"kitchenId" binding:"required"`
+	IngredientIDs []string `json:"ingredientIds" binding:"required,min=1"`
+}
+
+// SupplierInfo - Information about a selected supplier for an ingredient
+type SupplierInfo struct {
+	SupplierID   string  `json:"supplierId"`
+	SupplierName string  `json:"supplierName"`
+	Phone        string  `json:"phone"`
+	Email        string  `json:"email"`
+	Address      string  `json:"address"`
+	UnitPrice    float64 `json:"unitPrice"`
+	Unit         string  `json:"unit"`
+	ProductName  string  `json:"productName"`
+	ProductID    int     `json:"productId"`
+}
+
+// IngredientSupplierInfo - Supplier information for a specific ingredient
+type IngredientSupplierInfo struct {
+	IngredientID     string        `json:"ingredientId"`
+	IngredientName   string        `json:"ingredientName"`
+	IngredientType   string        `json:"ingredientType"`
+	MaterialGroup    string        `json:"materialGroup"`
+	SelectedSupplier *SupplierInfo `json:"selectedSupplier"`
+	SelectionReason  string        `json:"selectionReason"`
+}
+
+// BestSupplierResponse - Response containing best suppliers for all ingredients
+type BestSupplierResponse struct {
+	OrderID   string                   `json:"orderId"`
+	KitchenID string                   `json:"kitchenId"`
+	Suppliers []IngredientSupplierInfo `json:"suppliers"`
+}
+```
+
+#### models/supplier_price.go
+*Language: Go | Size: 1800 bytes*
+
+```go
+package models
+
+import "time"
+
+// SupplierPrice - Supplier price list (supplier_price_list)
+type SupplierPrice struct {
+	ProductID     int        `gorm:"primaryKey;autoIncrement;column:product_id" json:"productId"`
+	ProductName   string     `gorm:"column:product_name" json:"productName"`
+	IngredientID  string     `gorm:"column:ingredient_id" json:"ingredientId"`
+	Category      string     `gorm:"column:classification" json:"category"`
+	SupplierID    string     `gorm:"column:supplier_id" json:"supplierId"`
+	Manufacturer  string     `gorm:"column:manufacturer_name" json:"manufacturer"`
+	Unit          string     `gorm:"column:unit" json:"unit"`
+	Specification string     `gorm:"column:specification" json:"specification"`
+	UnitPrice     float64    `gorm:"column:unit_price;type:decimal(15,2)" json:"unitPrice"`
+	PricePer1     float64    `gorm:"column:price_per_item;type:decimal(15,2)" json:"pricePer1"`
+	EffectiveFrom *time.Time `gorm:"column:effective_from" json:"effectiveFrom"`
+	EffectiveTo   *time.Time `gorm:"column:effective_to" json:"effectiveTo"`
+	Active        *bool      `gorm:"column:active;default:true" json:"active"`
+	NewPrice      float64    `gorm:"column:new_buying_price;type:decimal(15,2)" json:"newPrice"`
+	Promotion     string     `gorm:"column:promotion;type:char(1)" json:"promotion"`
+	CreatedDate   time.Time  `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate  time.Time  `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	Ingredient *Ingredient `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
+	Supplier   *Supplier   `gorm:"foreignKey:SupplierID;references:SupplierID" json:"supplier,omitempty"`
+}
+
+func (SupplierPrice) TableName() string {
+	return "supplier_price_list"
+}
+```
+
+#### models/supplier_price_dto.go
+*Language: Go | Size: 2175 bytes*
+
+```go
+package models
+
+import "time"
+
+// SupplierPriceDTO - Data Transfer Object for Supplier Price with related names
+type SupplierPriceDTO struct {
+	ProductID        int        `json:"productId"`
+	ProductName      string     `json:"productName"`
+	IngredientID     string     `json:"ingredientId"`
+	IngredientName   string     `json:"ingredientName"`   // Ingredient name from relationship
+	Category         string     `json:"category"`
+	SupplierID       string     `json:"supplierId"`
+	SupplierName     string     `json:"supplierName"`     // Supplier name from relationship
+	Manufacturer     string     `json:"manufacturer"`
+	Unit             string     `json:"unit"`
+	Specification    string     `json:"specification"`
+	UnitPrice        float64    `json:"unitPrice"`
+	PricePer1        float64    `json:"pricePer1"`
+	EffectiveFrom    *time.Time `json:"effectiveFrom"`
+	EffectiveTo      *time.Time `json:"effectiveTo"`
+	Active           *bool      `json:"active"`
+	NewPrice         float64    `json:"newPrice"`
+	Promotion        string     `json:"promotion"`
+}
+
+// ToDTO converts SupplierPrice model to DTO
+func (sp *SupplierPrice) ToDTO() SupplierPriceDTO {
+	dto := SupplierPriceDTO{
+		ProductID:     sp.ProductID,
+		ProductName:   sp.ProductName,
+		IngredientID:  sp.IngredientID,
+		Category:      sp.Category,
+		SupplierID:    sp.SupplierID,
+		Manufacturer:  sp.Manufacturer,
+		Unit:          sp.Unit,
+		Specification: sp.Specification,
+		UnitPrice:     sp.UnitPrice,
+		PricePer1:     sp.PricePer1,
+		EffectiveFrom: sp.EffectiveFrom,
+		EffectiveTo:   sp.EffectiveTo,
+		Active:        sp.Active,
+		NewPrice:      sp.NewPrice,
+		Promotion:     sp.Promotion,
+	}
+
+	// Populate names from relationships if available
+	if sp.Ingredient != nil {
+		dto.IngredientName = sp.Ingredient.IngredientName
+	}
+	if sp.Supplier != nil {
+		dto.SupplierName = sp.Supplier.SupplierName
+	}
+
+	return dto
+}
+
+// ConvertSupplierPricesToDTO converts a slice of SupplierPrice to a slice of SupplierPriceDTO
+func ConvertSupplierPricesToDTO(prices []SupplierPrice) []SupplierPriceDTO {
+	dtos := make([]SupplierPriceDTO, len(prices))
+	for i, price := range prices {
+		dtos[i] = price.ToDTO()
+	}
+	return dtos
+}
+```
+
+#### models/token.go
+*Language: Go | Size: 2186 bytes*
+
+```go
+package models
+
+import (
+	"time"
+)
+
+// TokenPair - Stores access and refresh tokens for user sessions
+type TokenPair struct {
+	SessionID        string    `gorm:"primaryKey;column:session_id" json:"sessionId"`
+	AccessToken      string    `gorm:"column:access_token;not null" json:"accessToken,omitempty"`
+	RefreshToken     string    `gorm:"column:refresh_token;not null" json:"refreshToken,omitempty"`
+	AccessExpiresAt  time.Time `gorm:"column:access_expires_at;not null" json:"accessExpiresAt"`
+	RefreshExpiresAt time.Time `gorm:"column:refresh_expires_at;not null" json:"refreshExpiresAt"`
+	UserID           string    `gorm:"column:user_id;not null" json:"userId"`
+	LastActivity     time.Time `gorm:"column:last_activity;autoUpdateTime" json:"lastActivity"`
+	CreatedDate      time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate     time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	User *User `gorm:"foreignKey:UserID;references:UserID" json:"user,omitempty"`
+}
+
+func (TokenPair) TableName() string {
+	return "auth_token_pairs"
+}
+
+// UserSession - Extended session information for tracking user activity
+type UserSession struct {
+	SessionID    string     `gorm:"primaryKey;column:session_id" json:"sessionId"`
+	UserID       string     `gorm:"column:user_id;not null" json:"userId"`
+	IPAddress    string     `gorm:"column:ip_address" json:"ipAddress"`
+	UserAgent    string     `gorm:"column:user_agent" json:"userAgent"`
+	LastActivity time.Time  `gorm:"column:last_activity;autoUpdateTime" json:"lastActivity"`
+	IsActive     *bool      `gorm:"column:is_active;default:true" json:"isActive"`
+	LoginTime    time.Time  `gorm:"column:login_time;autoCreateTime" json:"loginTime"`
+	LogoutTime   *time.Time `gorm:"column:logout_time" json:"logoutTime,omitempty"`
+	CreatedDate  time.Time  `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+	ModifiedDate time.Time  `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+
+	// Relationships
+	User *User `gorm:"foreignKey:UserID;references:UserID" json:"user,omitempty"`
+}
+
+func (UserSession) TableName() string {
+	return "auth_user_sessions"
+}
+```
+
+#### models/user.go
+*Language: Go | Size: 1136 bytes*
+
+```go
+package models
+
+import (
+	"time"
+)
+
+
+
+
+
+
+// User - Master data for user accounts (dm_nguoidung)
+type User struct {
+    UserID       string    `gorm:"primaryKey;column:user_id" json:"userId"`
+    UserName     string    `gorm:"column:user_name;not null;unique" json:"userName"`
+	Password     string    `gorm:"column:password;not null" json:"password,omitempty"`
+    FullName     string    `gorm:"column:full_name;not null" json:"fullName"`
+    Role         string    `gorm:"column:role" json:"role"`
+    KitchenID    string    `gorm:"column:kitchen_id" json:"kitchenId"`
+	Email        string    `gorm:"column:email" json:"email"`
+    Phone        string    `gorm:"column:phone" json:"phone"`
+	Active       *bool     `gorm:"column:active;default:true" json:"active"`
+    CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
+    ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
+	
+	// Relationships
+	Kitchen      *Kitchen  `gorm:"foreignKey:KitchenID;references:KitchenID" json:"kitchen,omitempty"`
+}
+
+func (User) TableName() string {
+    return "master_users"
+}
+
+
+
+
+
+
+```
+
+#### .env
+*Language: Text | Size: 119 bytes*
+
+```text
+DATABASE_URL="host=14.225.198.206 user=adong password=adong123 dbname=adongfoodv3 port=5432 sslmode=disable"
+PORT=18080
+```
+
+#### .gitignore
+*Language: Text | Size: 15 bytes*
+
+```text
+backend.md
+.env
+```
+
+#### Adong Food Management API - Complete.postman_collection.json
+*Language: JSON | Size: 52291 bytes*
+
+```json
+{
+	"info": {
+		"_postman_id": "f5119143-4bda-4455-a43e-e403e77e9291",
+		"name": "Adong Food Management API - Complete",
+		"description": "Complete API collection for Adong Food Management System with authentication, pagination, search, and sorting capabilities",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "16908025"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    // Save access token",
+									"    if (jsonData.data && jsonData.data.access_token) {",
+									"        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
+									"        console.log('Access token saved:', jsonData.data.access_token);",
+									"    }",
+									"    ",
+									"    // Save refresh token",
+									"    if (jsonData.data && jsonData.data.refresh_token)  {",
+									"        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
+									"        console.log('Refresh token saved');",
+									"    }",
+									"    ",
+									"    // Save expire time if available",
+									"    if (jsonData.data && jsonData.data.access_token) {",
+									"        pm.collectionVariables.set('token_expire', jsonData.data.access_token);",
+									"    }",
+									"    ",
+									"    pm.test('Login successful', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    ",
+									"    pm.test('Token received', function () {",
+									"        pm.expect(jsonData.data.access_token).to.be.a('string');",
+									"    });",
+									"} else {",
+									"    pm.test('Login failed', function () {",
+									"        pm.response.to.have.status(401);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"NV001\",\n    \"password\": \"1234\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{refresh_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout All Sessions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/logout-all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout-all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Sessions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/sessions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"sessions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Ingredients",
+			"item": [
+				{
+					"name": "Get All Ingredients",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ingredients?page=1&per_page=10&search=&sortBy=&sortDir=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ingredients"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "sortBy",
+									"value": ""
+								},
+								{
+									"key": "sortDir",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Ingredient by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ingredients/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ingredients",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Ingredient",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tennguyenlieu\": \"CÃ  chua\",\n    \"donvi\": \"kg\",\n    \"dongia\": 25000,\n    \"mota\": \"CÃ  chua tÆ°Æ¡i\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ingredients",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ingredients"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Ingredient",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tennguyenlieu\": \"CÃ  chua bi\",\n    \"donvi\": \"kg\",\n    \"dongia\": 30000,\n    \"mota\": \"CÃ  chua bi tÆ°Æ¡i\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ingredients/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ingredients",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Ingredient",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ingredients/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ingredients",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Kitchens",
+			"item": [
+				{
+					"name": "Get All Kitchens",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/kitchens?page=1&per_page=10&search=&sortBy=&sortDir=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "sortBy",
+									"value": ""
+								},
+								{
+									"key": "sortDir",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Kitchen by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/kitchens/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Kitchen",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenbep\": \"Báº¿p ChÃ­nh\",\n    \"vitri\": \"Táº§ng 1\",\n    \"mota\": \"Báº¿p chÃ­nh phá»¥c vá»¥ toÃ n bá»™ nhÃ  hÃ ng\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/kitchens",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Kitchen",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenbep\": \"Báº¿p ChÃ­nh - Cáº­p nháº­t\",\n    \"vitri\": \"Táº§ng 1\",\n    \"mota\": \"Báº¿p chÃ­nh Ä‘Ã£ Ä‘Æ°á»£c nÃ¢ng cáº¥p\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/kitchens/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Kitchen",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/kitchens/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Kitchen Favorite Suppliers",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/kitchens/:id/favorite-suppliers?page=1&page_size=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens",
+								":id",
+								"favorite-suppliers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "10"
+								}
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "BP001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Kitchen Favorite Supplier by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/kitchens/:id/favorite-suppliers/:favoriteId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens",
+								":id",
+								"favorite-suppliers",
+								":favoriteId"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "BP001"
+								},
+								{
+									"key": "favoriteId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Kitchen Favorite Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"supplier_id\": \"NCC001\",\n    \"ingredient_id\": \"NL001\",\n    \"priority_order\": 1,\n    \"notes\": \"Nhà cung cấp chất lượng tốt, giao hàng đúng hạn\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/kitchens/:id/favorite-suppliers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens",
+								":id",
+								"favorite-suppliers"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "BP001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Kitchen Favorite Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"supplier_id\": \"NCC001\",\n    \"ingredient_id\": \"NL001\",\n    \"priority_order\": 2,\n    \"notes\": \"Cập nhật thứ tự ưu tiên\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/kitchens/:id/favorite-suppliers/:favoriteId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens",
+								":id",
+								"favorite-suppliers",
+								":favoriteId"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "BP001"
+								},
+								{
+									"key": "favoriteId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Kitchen Favorite Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/kitchens/:id/favorite-suppliers/:favoriteId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kitchens",
+								":id",
+								"favorite-suppliers",
+								":favoriteId"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "BP001"
+								},
+								{
+									"key": "favoriteId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users?page=1&per_page=10&search=&sortBy=&sortDir=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "sortBy",
+									"value": ""
+								},
+								{
+									"key": "sortDir",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userid\": \"user123\",\n    \"password\": \"password123\",\n    \"hovaten\": \"Nguyá»…n VÄƒn A\",\n    \"email\": \"nguyenvana@example.com\",\n    \"sodienthoai\": \"0123456789\",\n    \"role\": \"user\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"hovaten\": \"Nguyá»…n VÄƒn A (Updated)\",\n    \"email\": \"nguyenvana.updated@example.com\",\n    \"sodienthoai\": \"0987654321\",\n    \"role\": \"user\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dishes",
+			"item": [
+				{
+					"name": "Get All Dishes",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dishes?page=2&per_page=10&search=&sortBy=&sortDir=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dishes"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "2"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "sortBy",
+									"value": ""
+								},
+								{
+									"key": "sortDir",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Dishe by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dishes/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dishes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Dishe",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenmonan\": \"Phá»Ÿ BÃ²\",\n    \"loaimonan\": \"MÃ³n chÃ­nh\",\n    \"dongia\": 50000,\n    \"mota\": \"Phá»Ÿ bÃ² truyá»n thá»‘ng HÃ  Ná»™i\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/dishes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dishes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Dishe",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenmonan\": \"Phá»Ÿ BÃ² Äáº·c Biá»‡t\",\n    \"loaimonan\": \"MÃ³n chÃ­nh\",\n    \"dongia\": 60000,\n    \"mota\": \"Phá»Ÿ bÃ² Ä‘áº·c biá»‡t vá»›i nhiá»u thá»‹t\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/dishes/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dishes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Dishe",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dishes/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dishes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Get All Orders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/orders?page=1&per_page=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "sortDir",
+									"value": "asc",
+									"disabled": true
+								},
+								{
+									"key": "kitchen_id",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "from_date",
+									"value": "2025-11-01",
+									"disabled": true
+								},
+								{
+									"key": "to_date",
+									"value": "2025-11-04",
+									"disabled": true
+								},
+								{
+									"key": "dish_id",
+									"value": "PHO001",
+									"disabled": true
+								},
+								{
+									"key": "ingredient_id",
+									"value": "ING001",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Ingredients Summary In Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/ingredients/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"ingredients",
+								"summary"
+							],
+							"query": [
+								{
+									"key": "kitchen_id",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "from_date",
+									"value": "2025-11-01",
+									"disabled": true
+								},
+								{
+									"key": "to_date",
+									"value": "2025-11-04",
+									"disabled": true
+								},
+								{
+									"key": "dish_id",
+									"value": "PHO001",
+									"disabled": true
+								},
+								{
+									"key": "ingredient_id",
+									"value": "ING001",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Ingredient Summary In Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/ingredients/:ingredientId/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"ingredients",
+								":ingredientId",
+								"summary"
+							],
+							"query": [
+								{
+									"key": "kitchen_id",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "from_date",
+									"value": "2025-11-01",
+									"disabled": true
+								},
+								{
+									"key": "to_date",
+									"value": "2025-11-04",
+									"disabled": true
+								},
+								{
+									"key": "dish_id",
+									"value": "PHO001",
+									"disabled": true
+								},
+								{
+									"key": "ingredient_id",
+									"value": "ING001",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								},
+								{
+									"key": "ingredientId",
+									"value": "ING001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier Requests By Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/supplier-requests",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"supplier-requests"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier Request Details By Ingredient In Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/supplier-requests/ingredient/:ingredientId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"supplier-requests",
+								"ingredient",
+								":ingredientId"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								},
+								{
+									"key": "ingredientId",
+									"value": "ING001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Save Order Ingredients With Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"supplierId\": \"SUP001\",\n  \"ingredients\": [\n    {\n      \"ingredientId\": \"ING001\",\n      \"quantity\": 3.6,\n      \"unit\": \"kg\",\n      \"unitPrice\": 25000\n    },\n    {\n      \"ingredientId\": \"ING002\",\n      \"quantity\": 2.4,\n      \"unit\": \"kg\",\n      \"unitPrice\": 18000\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/supplier-ingredients",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"supplier-ingredients"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Supplier Request (alias)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"supplierId\": \"SUP001\",\n  \"ingredients\": [\n    {\n      \"ingredientId\": \"ING001\",\n      \"quantity\": 3.6,\n      \"unit\": \"kg\",\n      \"unitPrice\": 25000\n    },\n    {\n      \"ingredientId\": \"ING002\",\n      \"quantity\": 2.4,\n      \"unit\": \"kg\",\n      \"unitPrice\": 18000\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id/supplier-requests",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id",
+								"supplier-requests"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/orders/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "33"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"kitchenId\": \"BEP001\",\n  \"orderDate\": \"2025-11-04\",\n  \"note\": \"Sample order created from samples.sql data\",\n  \"status\": \"Pending\",\n  \"createdByUserId\": \"USR002\",\n  \"details\": [\n    {\n      \"dishId\": \"PHO001\",\n      \"portions\": 30,\n      \"note\": \"Phá»Ÿ bÃ² cho nhÃ¢n viÃªn vÄƒn phÃ²ng\",\n      \"ingredients\": [\n        {\n          \"ingredientId\": \"ING001\",\n          \"quantity\": 3.6,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.12\n        },\n        {\n          \"ingredientId\": \"ING002\",\n          \"quantity\": 2.4,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.08\n        },\n        {\n          \"ingredientId\": \"ING003\",\n          \"quantity\": 0.6,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.02\n        }\n      ]\n    },\n    {\n      \"dishId\": \"GOI001\",\n      \"portions\": 20,\n      \"note\": \"Gá»i cuá»‘n khai vá»‹\",\n      \"ingredients\": [\n        {\n          \"ingredientId\": \"ING005\",\n          \"quantity\": 1.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.05\n        },\n        {\n          \"ingredientId\": \"ING007\",\n          \"quantity\": 4.0,\n          \"unit\": \"bÃ³\",\n          \"standardPerPortion\": 0.2\n        },\n        {\n          \"ingredientId\": \"ING008\",\n          \"quantity\": 1.0,\n          \"unit\": \"kg\",\n          \"standardPerPortion\": 0.05\n        }\n      ]\n    }\n  ],\n  \"supplementaryFoods\": [\n    {\n      \"ingredientId\": \"ING003\",\n      \"quantity\": 0.2,\n      \"unit\": \"kg\",\n      \"standardPerPortion\": 0,\n      \"portions\": 0,\n      \"note\": \"ThÃªm hÃ nh lÃ¡ dá»± phÃ²ng\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenmonan\": \"Phá»Ÿ BÃ² Äáº·c Biá»‡t\",\n    \"loaimonan\": \"MÃ³n chÃ­nh\",\n    \"dongia\": 60000,\n    \"mota\": \"Phá»Ÿ bÃ² Ä‘áº·c biá»‡t vá»›i nhiá»u thá»‹t\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/dishes/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dishes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dishes/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dishes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Recipe Standards",
+			"item": [
+				{
+					"name": "Get All Recipe Standards",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/recipe-standards?page=1&per_page=10&search=&sortBy=&sortDir=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"recipe-standards"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "sortBy",
+									"value": ""
+								},
+								{
+									"key": "sortDir",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recipe Standard by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/recipe-standards/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"recipe-standards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Recipe Standard",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"monanid\": 1,\n    \"nguyenlieuId\": 1,\n    \"soluong\": 0.5,\n    \"donvi\": \"kg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/recipe-standards",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"recipe-standards"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Recipe Standard",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"monanid\": 1,\n    \"nguyenlieuId\": 1,\n    \"soluong\": 0.7,\n    \"donvi\": \"kg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/recipe-standards/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"recipe-standards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Recipe Standard",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/recipe-standards/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"recipe-standards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recipe Standards by Dish",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/recipe-standards/dish/:dishId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"recipe-standards",
+								"dish",
+								":dishId"
+							],
+							"variable": [
+								{
+									"key": "dishId"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Supplier Prices",
+			"item": [
+				{
+					"name": "Get All Supplier Prices",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices?per_page=10&sortBy=&sortDir=asc&effective_from=2024-10-01&effective_to=2026-10-01&page=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": "ga",
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": ""
+								},
+								{
+									"key": "sortDir",
+									"value": "asc"
+								},
+								{
+									"key": "effective_from",
+									"value": "2024-10-01"
+								},
+								{
+									"key": "effective_to",
+									"value": "2026-10-01"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier Prices by Ingredient",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices/ingredient/:ingredientId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices",
+								"ingredient",
+								":ingredientId"
+							],
+							"variable": [
+								{
+									"key": "ingredientId"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier Prices by Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices/supplier/:supplierId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices",
+								"supplier",
+								":supplierId"
+							],
+							"variable": [
+								{
+									"key": "supplierId"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier Price by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Supplier Price",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nhacungcapid\": 1,\n    \"nguyenlieuId\": 1,\n    \"dongia\": 25000,\n    \"ngaycapnhat\": \"2025-10-25T00:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Supplier Price",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nhacungcapid\": 1,\n    \"nguyenlieuId\": 1,\n    \"dongia\": 28000,\n    \"ngaycapnhat\": \"2025-10-25T00:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Supplier Price",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/supplier-prices/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"supplier-prices",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Suppliers",
+			"item": [
+				{
+					"name": "Get All Suppliers",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/suppliers?page=1&pageSize=10&search=&sortBy=&sortDir=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "10"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "sortBy",
+									"value": ""
+								},
+								{
+									"key": "sortDir",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Supplier by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/suppliers/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tennhacungcap\": \"CÃ´ng ty TNHH ABC\",\n    \"diachi\": \"123 ÄÆ°á»ng ABC, HÃ  Ná»™i\",\n    \"sodienthoai\": \"0241234567\",\n    \"email\": \"contact@abc.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/suppliers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tennhacungcap\": \"CÃ´ng ty TNHH ABC (Updated)\",\n    \"diachi\": \"456 ÄÆ°á»ng XYZ, HÃ  Ná»™i\",\n    \"sodienthoai\": \"0247654321\",\n    \"email\": \"info@abc.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/suppliers/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Supplier",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/suppliers/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"suppliers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:18080",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "token_expire",
+			"value": ""
+		}
+	]
+}
+```
+
+#### Dockerfile
+*Language: Text | Size: 1121 bytes*
+
+```text
+# ============================================
+# Stage 1: Build Stage
+# ============================================
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+
+RUN --mount=type=bind,target=/app \
+    go build -o /tmp/main cmd/main.go
+
+# ============================================
+# Stage 2: Runtime Stage
+# ============================================
+FROM alpine:latest
+
+# Set timezone
+ENV TZ=Asia/Ho_Chi_Minh
+
+# Create app user for security (non-root)
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy binary from builder stage
+COPY --from=builder --chown=appuser:appuser /tmp/main .
+
+# Copy .env file if exists (optional - can use env vars instead)
+COPY --from=builder --chown=appuser:appuser /app/.env* ./
+
+# Set ownership
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose application port
+EXPOSE 18080
+
+# Health check
+HEALTHCHECK --interval=30s \
+    --timeout=10s \
+    --start-period=5s \
+    --retries=3 \
+    CMD curl -f http://localhost:18080/health || exit 1
+
+# Run the application
+CMD ["./main"]
+```
+
+#### README.md
+*Language: Markdown | Size: 21 bytes*
+
+```markdown
+# adong-food-backend
+```
+
+#### be.md
+*Language: Markdown | Size: 152669 bytes*
+
+```markdown
 
 ## Directory Structure
 
@@ -4282,6 +11896,756 @@ func convertToCoreUser(dbUser models.User) *core.User {
 		Role:     dbUser.Role,
 		IsActive: true,
 	}
+}
+```
+
+### utils/
+
+#### utils/search.go
+*Language: Go | Size: 1635 bytes*
+
+```go
+package utils
+
+import (
+	"fmt"
+	"strings"
+
+	"gorm.io/gorm"
+)
+
+// SearchConfig defines which fields to search and their weight
+type SearchConfig struct {
+	Fields []string
+	Fuzzy  bool // Use ILIKE (case-insensitive) vs exact match
+}
+
+// ApplySearch applies search conditions to a GORM query
+func ApplySearch(db *gorm.DB, search string, config SearchConfig) *gorm.DB {
+	if search == "" || len(config.Fields) == 0 {
+		return db
+	}
+
+	// Trim and prepare search term
+	search = strings.TrimSpace(search)
+
+	// Build search conditions
+	var conditions []string
+	var args []interface{}
+
+	for _, field := range config.Fields {
+		if config.Fuzzy {
+			conditions = append(conditions, fmt.Sprintf("%s ILIKE ?", field))
+			args = append(args, "%"+search+"%")
+		} else {
+			conditions = append(conditions, fmt.Sprintf("%s = ?", field))
+			args = append(args, search)
+		}
+	}
+
+	// Combine with OR
+	query := strings.Join(conditions, " OR ")
+	return db.Where(query, args...)
+}
+
+// ApplySort applies sorting to a GORM query
+func ApplySort(db *gorm.DB, sortBy, sortDir string, allowedFields map[string]string) *gorm.DB {
+	if sortBy == "" {
+		return db
+	}
+
+	// Validate sort field
+	dbField, ok := allowedFields[sortBy]
+	if !ok {
+		return db
+	}
+
+	// Validate sort direction
+	if sortDir != "asc" && sortDir != "desc" {
+		sortDir = "asc"
+	}
+
+	return db.Order(fmt.Sprintf("%s %s", dbField, strings.ToUpper(sortDir)))
+}
+
+// ApplyPagination applies pagination to a GORM query
+func ApplyPagination(db *gorm.DB, page, pageSize int) *gorm.DB {
+	if page < 1 || pageSize < 1 {
+		return db
+	}
+	offset := (page - 1) * pageSize
+	return db.Offset(offset).Limit(pageSize)
+}
+```
+
+```
+
+#### go.mod
+*Language: Text | Size: 2509 bytes*
+
+```text
+module adong-be
+
+go 1.25.0
+
+require (
+	github.com/gin-gonic/gin v1.11.0
+	github.com/google/uuid v1.6.0
+	github.com/hsdfat/go-auth-middleware v0.0.2-0.20251102145001-21cf71122ac3
+	github.com/joho/godotenv v1.5.1
+	github.com/stretchr/testify v1.11.1
+	go.uber.org/zap v1.27.0
+	gorm.io/driver/postgres v1.6.0
+	gorm.io/gorm v1.31.0
+)
+
+require (
+	github.com/bytedance/sonic v1.14.0 // indirect
+	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/cloudwego/base64x v0.1.6 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
+	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/validator/v10 v10.27.0 // indirect
+	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/goccy/go-yaml v1.18.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
+	github.com/hsdfat/go-project-dump v0.0.0-20250724152935-d08ad95c2f56 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.6.0 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/quic-go/qpack v0.5.1 // indirect
+	github.com/quic-go/quic-go v0.54.0 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
+	github.com/ugorji/go/codec v1.3.0 // indirect
+	go.uber.org/mock v0.5.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	golang.org/x/arch v0.20.0 // indirect
+	golang.org/x/crypto v0.40.0 // indirect
+	golang.org/x/mod v0.25.0 // indirect
+	golang.org/x/net v0.42.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/tools v0.34.0 // indirect
+	google.golang.org/protobuf v1.36.9 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+```
+
+#### go.sum
+*Language: Text | Size: 11634 bytes*
+
+```text
+github.com/bytedance/sonic v1.14.0 h1:/OfKt8HFw0kh2rj8N0F6C/qPGRESq0BbaNZgcNXXzQQ=
+github.com/bytedance/sonic v1.14.0/go.mod h1:WoEbx8WTcFJfzCe0hbmyTGrfjt8PzNEBdxlNUO24NhA=
+github.com/bytedance/sonic/loader v0.3.0 h1:dskwH8edlzNMctoruo8FPTJDF3vLtDT0sXZwvZJyqeA=
+github.com/bytedance/sonic/loader v0.3.0/go.mod h1:N8A3vUdtUebEY2/VQC0MyhYeKUFosQU6FxH2JmUe6VI=
+github.com/cloudwego/base64x v0.1.6 h1:t11wG9AECkCDk5fMSoxmufanudBtJ+/HemLstXDLI2M=
+github.com/cloudwego/base64x v0.1.6/go.mod h1:OFcloc187FXDaYHvrNIjxSe8ncn0OOM8gEHfghB2IPU=
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/gabriel-vasile/mimetype v1.4.8 h1:FfZ3gj38NjllZIeJAmMhr+qKL8Wu+nOoI3GqacKw1NM=
+github.com/gabriel-vasile/mimetype v1.4.8/go.mod h1:ByKUIKGjh1ODkGM1asKUbQZOLGrPjydw3hYPU2YU9t8=
+github.com/gin-contrib/sse v1.1.0 h1:n0w2GMuUpWDVp7qSpvze6fAu9iRxJY4Hmj6AmBOU05w=
+github.com/gin-contrib/sse v1.1.0/go.mod h1:hxRZ5gVpWMT7Z0B0gSNYqqsSCNIJMjzvm6fqCz9vjwM=
+github.com/gin-gonic/gin v1.11.0 h1:OW/6PLjyusp2PPXtyxKHU0RbX6I/l28FTdDlae5ueWk=
+github.com/gin-gonic/gin v1.11.0/go.mod h1:+iq/FyxlGzII0KHiBGjuNn4UNENUlKbGlNmc+W50Dls=
+github.com/go-playground/assert/v2 v2.2.0 h1:JvknZsQTYeFEAhQwI4qEt9cyV5ONwRHC+lYKSsYSR8s=
+github.com/go-playground/assert/v2 v2.2.0/go.mod h1:VDjEfimB/XKnb+ZQfWdccd7VUvScMdVu0Titje2rxJ4=
+github.com/go-playground/locales v0.14.1 h1:EWaQ/wswjilfKLTECiXz7Rh+3BjFhfDFKv/oXslEjJA=
+github.com/go-playground/locales v0.14.1/go.mod h1:hxrqLVvrK65+Rwrd5Fc6F2O76J/NuW9t0sjnWqG1slY=
+github.com/go-playground/universal-translator v0.18.1 h1:Bcnm0ZwsGyWbCzImXv+pAJnYK9S473LQFuzCbDbfSFY=
+github.com/go-playground/universal-translator v0.18.1/go.mod h1:xekY+UJKNuX9WP91TpwSH2VMlDf28Uj24BCp08ZFTUY=
+github.com/go-playground/validator/v10 v10.27.0 h1:w8+XrWVMhGkxOaaowyKH35gFydVHOvC0/uWoy2Fzwn4=
+github.com/go-playground/validator/v10 v10.27.0/go.mod h1:I5QpIEbmr8On7W0TktmJAumgzX4CA1XNl4ZmDuVHKKo=
+github.com/goccy/go-json v0.10.2 h1:CrxCmQqYDkv1z7lO7Wbh2HN93uovUHgrECaO5ZrCXAU=
+github.com/goccy/go-json v0.10.2/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
+github.com/goccy/go-yaml v1.18.0 h1:8W7wMFS12Pcas7KU+VVkaiCng+kG8QiFeFwzFb+rwuw=
+github.com/goccy/go-yaml v1.18.0/go.mod h1:XBurs7gK8ATbW4ZPGKgcbrY1Br56PdM69F7LkFRi1kA=
+github.com/golang-jwt/jwt/v5 v5.2.2 h1:Rl4B7itRWVtYIHFrSNd7vhTiz9UpLdi6gZhZ3wEeDy8=
+github.com/golang-jwt/jwt/v5 v5.2.2/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
+github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
+github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
+github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
+github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/hsdfat/go-auth-middleware v0.0.1 h1:2YZ4ueN8zkGsG5RGLlwUsNbPZcmgvNoGAyU91uHo3uY=
+github.com/hsdfat/go-auth-middleware v0.0.1/go.mod h1:qQwY7LmjEFc3otr2stjK29xrG2ZFZWF46louzK2QQ3U=
+github.com/hsdfat/go-auth-middleware v0.0.2-0.20251102145001-21cf71122ac3 h1:s7gcPUojX+GBzD3SqWB/NTP8rsxatlqFtmYpUIm/Ceo=
+github.com/hsdfat/go-auth-middleware v0.0.2-0.20251102145001-21cf71122ac3/go.mod h1:qQwY7LmjEFc3otr2stjK29xrG2ZFZWF46louzK2QQ3U=
+github.com/hsdfat/go-project-dump v0.0.0-20250724152935-d08ad95c2f56 h1:IpDbDpzTP3WRGnp5sviJvwXxfFRl7SXKyew5i9lsabI=
+github.com/hsdfat/go-project-dump v0.0.0-20250724152935-d08ad95c2f56/go.mod h1:+E55eG5FkuvpQT4NuG2F7rZSjV1ka3NgI959U2OuTX0=
+github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
+github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=
+github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 h1:iCEnooe7UlwOQYpKFhBabPMi4aNAfoODPEFNiAnClxo=
+github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761/go.mod h1:5TJZWKEWniPve33vlWYSoGYefn3gLQRzjfDlhSJ9ZKM=
+github.com/jackc/pgx/v5 v5.6.0 h1:SWJzexBzPL5jb0GEsrPMLIsi/3jOo7RHlzTjcAeDrPY=
+github.com/jackc/pgx/v5 v5.6.0/go.mod h1:DNZ/vlrUnhWCoFGxHAG8U2ljioxukquj7utPDgtQdTw=
+github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo=
+github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
+github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
+github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
+github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
+github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
+github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
+github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
+github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
+github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
+github.com/klauspost/cpuid/v2 v2.3.0 h1:S4CRMLnYUhGeDFDqkGriYKdfoFlDnMtqTiI/sFzhA9Y=
+github.com/klauspost/cpuid/v2 v2.3.0/go.mod h1:hqwkgyIinND0mEev00jJYCxPNVRVXFQeu1XKlok6oO0=
+github.com/kr/pretty v0.3.0 h1:WgNl7dwNpEZ6jJ9k1snq4pZsg7DOEN8hP9Xw0Tsjwk0=
+github.com/kr/pretty v0.3.0/go.mod h1:640gp4NfQd8pI5XOwp5fnNeVWj67G7CFk/SaSQn7NBk=
+github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
+github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
+github.com/leodido/go-urn v1.4.0 h1:WT9HwE9SGECu3lg4d/dIA+jxlljEa1/ffXKmRjqdmIQ=
+github.com/leodido/go-urn v1.4.0/go.mod h1:bvxc+MVxLKB4z00jd1z+Dvzr47oO32F/QSNjSBOlFxI=
+github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
+github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
+github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
+github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w8PVh93nsPXa1VrQ6jlwL5oN8l14QlcNfg=
+github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
+github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
+github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
+github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
+github.com/pelletier/go-toml/v2 v2.2.4/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/quic-go/qpack v0.5.1 h1:giqksBPnT/HDtZ6VhtFKgoLOWmlyo9Ei6u9PqzIMbhI=
+github.com/quic-go/qpack v0.5.1/go.mod h1:+PC4XFrEskIVkcLzpEkbLqq1uCoxPhQuvK5rH1ZgaEg=
+github.com/quic-go/quic-go v0.54.0 h1:6s1YB9QotYI6Ospeiguknbp2Znb/jZYjZLRXn9kMQBg=
+github.com/quic-go/quic-go v0.54.0/go.mod h1:e68ZEaCdyviluZmy44P6Iey98v/Wfz6HCjQEm+l8zTY=
+github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
+github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
+github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
+github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
+github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
+github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
+github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
+github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
+github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
+github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
+github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
+github.com/ugorji/go/codec v1.3.0 h1:Qd2W2sQawAfG8XSvzwhBeoGq71zXOC/Q1E9y/wUcsUA=
+github.com/ugorji/go/codec v1.3.0/go.mod h1:pRBVtBSKl77K30Bv8R2P+cLSGaTtex6fsA2Wjqmfxj4=
+go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
+go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
+go.uber.org/mock v0.5.0 h1:KAMbZvZPyBPWgD14IrIQ38QCyjwpvVVV6K/bHl1IwQU=
+go.uber.org/mock v0.5.0/go.mod h1:ge71pBPLYDk7QIi1LupWxdAykm7KIEFchiOqd6z7qMM=
+go.uber.org/multierr v1.10.0 h1:S0h4aNzvfcFsC3dRF1jLoaov7oRaKqRGC/pUEJ2yvPQ=
+go.uber.org/multierr v1.10.0/go.mod h1:20+QtiLqy0Nd6FdQB9TLXag12DsQkrbs3htMFfDN80Y=
+go.uber.org/zap v1.27.0 h1:aJMhYGrd5QSmlpLMr2MftRKl7t8J8PTZPA732ud/XR8=
+go.uber.org/zap v1.27.0/go.mod h1:GB2qFLM7cTU87MWRP2mPIjqfIDnGu+VIO4V/SdhGo2E=
+golang.org/x/arch v0.20.0 h1:dx1zTU0MAE98U+TQ8BLl7XsJbgze2WnNKF/8tGp/Q6c=
+golang.org/x/arch v0.20.0/go.mod h1:bdwinDaKcfZUGpH09BB7ZmOfhalA8lQdzl62l8gGWsk=
+golang.org/x/crypto v0.40.0 h1:r4x+VvoG5Fm+eJcxMaY8CQM7Lb0l1lsmjGBQ6s8BfKM=
+golang.org/x/crypto v0.40.0/go.mod h1:Qr1vMER5WyS2dfPHAlsOj01wgLbsyWtFn/aY+5+ZdxY=
+golang.org/x/mod v0.25.0 h1:n7a+ZbQKQA/Ysbyb0/6IbB1H/X41mKgbhfv7AfG/44w=
+golang.org/x/mod v0.25.0/go.mod h1:IXM97Txy2VM4PJ3gI61r1YEk/gAj6zAHN3AdZt6S9Ww=
+golang.org/x/net v0.42.0 h1:jzkYrhi3YQWD6MLBJcsklgQsoAcw89EcZbJw8Z614hs=
+golang.org/x/net v0.42.0/go.mod h1:FF1RA5d3u7nAYA4z2TkclSCKh68eSXtiFwcWQpPXdt8=
+golang.org/x/sync v0.16.0 h1:ycBJEhp9p4vXvUZNszeOq0kGTPghopOL8q0fq3vstxw=
+golang.org/x/sync v0.16.0/go.mod h1:1dzgHSNfp02xaA81J2MS99Qcpr2w7fw1gpm99rleRqA=
+golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.35.0 h1:vz1N37gP5bs89s7He8XuIYXpyY0+QlsKmzipCbUtyxI=
+golang.org/x/sys v0.35.0/go.mod h1:BJP2sWEmIv4KK5OTEluFJCKSidICx8ciO85XgH3Ak8k=
+golang.org/x/text v0.27.0 h1:4fGWRpyh641NLlecmyl4LOe6yDdfaYNrGb2zdfo4JV4=
+golang.org/x/text v0.27.0/go.mod h1:1D28KMCvyooCX9hBiosv5Tz/+YLxj0j7XhWjpSUF7CU=
+golang.org/x/tools v0.34.0 h1:qIpSLOxeCYGg9TrcJokLBG4KFA6d795g0xkBkiESGlo=
+golang.org/x/tools v0.34.0/go.mod h1:pAP9OwEaY1CAW3HOmg3hLZC5Z0CCmzjAF2UQMSqNARg=
+google.golang.org/protobuf v1.36.9 h1:w2gp2mA27hUeUzj9Ex9FBjsBm40zfaDtEWow293U7Iw=
+google.golang.org/protobuf v1.36.9/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
+gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gorm.io/driver/postgres v1.6.0 h1:2dxzU8xJ+ivvqTRph34QX+WrRaJlmfyPqXmoGVjMBa4=
+gorm.io/driver/postgres v1.6.0/go.mod h1:vUw0mrGgrTK+uPHEhAdV4sfFELrByKVGnaVRkXDhtWo=
+gorm.io/gorm v1.31.0 h1:0VlycGreVhK7RF/Bwt51Fk8v0xLiiiFdbGDPIZQ7mJY=
+gorm.io/gorm v1.31.0/go.mod h1:XyQVbO2k6YkOis7C2437jSit3SsDK72s7n7rsSHd+Gs=
+```
+
+### server/
+
+#### server/router.go
+*Language: Go | Size: 6556 bytes*
+
+```go
+package server
+
+import (
+	"adong-be/handler"
+	"adong-be/logger"
+	"adong-be/store"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/hsdfat/go-auth-middleware/ginauth"
+)
+
+func SetupRouter() *gin.Engine {
+	r := gin.Default()
+
+	// Create user provider
+
+	// Create enhanced token storage
+	// tokenStorage := core.NewInMemoryTokenStorage()
+
+	// Create enhanced auth middleware
+	authMiddleware := ginauth.NewEnhanced(ginauth.EnhancedAuthConfig{
+		SecretKey:           "your-access-token-secret-key",
+		RefreshSecretKey:    "your-refresh-token-secret-key", // Should be different
+		AccessTokenTimeout:  24 * time.Hour,                  // Short-lived access tokens
+		RefreshTokenTimeout: 7 * 24 * time.Hour,              // 7 days refresh tokens
+
+		TokenLookup:   "header:Authorization,cookie:jwt",
+		TokenHeadName: "Bearer",
+		Realm:         "enhanced-auth",
+		IdentityKey:   "identity",
+
+		// Cookie configuration
+		SendCookie:        true,
+		CookieName:        "access_token",
+		RefreshCookieName: "refresh_token",
+		CookieHTTPOnly:    true,
+		CookieSecure:      false, // Set to true in production with HTTPS
+		CookieDomain:      "",
+
+		// Storage and providers
+		TokenStorage: store.DB,
+		UserProvider: store.DB,
+
+		// Authentication function
+		Authenticator: ginauth.CreateEnhancedAuthenticator(store.DB),
+
+		// Role-based authorization (example: only admin and user roles allowed)
+		RoleAuthorizator: ginauth.CreateRoleAuthorizator("Admin", "user", "moderator"),
+
+		// Security settings
+		MaxConcurrentSessions: 5,         // Max 5 concurrent sessions per user
+		SingleSessionMode:     false,     // Allow multiple sessions
+		EnableTokenRevocation: true,      // Enable token revocation on logout
+		CleanupInterval:       time.Hour, // Cleanup expired tokens every hour
+	})
+
+	// Public routes
+	r.POST("/auth/login", authMiddleware.LoginHandler)
+	r.POST("/auth/refresh", authMiddleware.RefreshHandler)
+	authenticated := r.Group("/auth")
+	authenticated.Use(authMiddleware.MiddlewareFunc())
+	{
+		authenticated.POST("/logout", authMiddleware.LogoutHandler)
+		authenticated.POST("/logout-all", authMiddleware.LogoutAllHandler)
+		authenticated.GET("/sessions", authMiddleware.GetUserSessionsHandler)
+	}
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
+	// Request logging middleware with user identity
+	r.Use(func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+		latency := time.Since(start)
+		status := c.Writer.Status()
+		userIDAfter, _ := c.Get("identity")
+		if len(c.Errors) > 0 {
+			logger.Log.Error("handler returned error",
+				"method", c.Request.Method,
+				"path", c.Request.URL.Path,
+				"status", status,
+				"errors", c.Errors.String(),
+				"latency", latency.String(),
+				"user_id", userIDAfter,
+			)
+		} else if status >= 400 {
+			logger.Log.Error("request completed with error status",
+				"method", c.Request.Method,
+				"path", c.Request.URL.Path,
+				"status", status,
+				"latency", latency.String(),
+				"user_id", userIDAfter,
+			)
+		} else {
+			logger.Log.Info("request completed",
+				"method", c.Request.Method,
+				"path", c.Request.URL.Path,
+				"status", status,
+				"latency", latency.String(),
+				"user_id", userIDAfter,
+			)
+		}
+	})
+
+	// API routes
+	api := r.Group("/api")
+	api.Use(authMiddleware.MiddlewareFunc())
+	{
+		api.GET("/ingredients", handler.GetIngredients)
+		api.GET("/ingredients/:id", handler.GetIngredient)
+		api.POST("/ingredients", handler.CreateIngredient)
+		api.PUT("/ingredients/:id", handler.UpdateIngredient)
+		api.DELETE("/ingredients/:id", handler.DeleteIngredient)
+
+		api.GET("/kitchens", handler.GetKitchens)
+		api.GET("/kitchens/:id", handler.GetKitchen)
+		api.POST("/kitchens", handler.CreateKitchen)
+		api.PUT("/kitchens/:id", handler.UpdateKitchen)
+		api.DELETE("/kitchens/:id", handler.DeleteKitchen)
+
+		api.GET("/users", handler.GetUsers)
+		api.GET("/users/:id", handler.GetUser)
+		api.POST("/users", handler.CreateUser)
+		api.PUT("/users/:id", handler.UpdateUser)
+		api.DELETE("/users/:id", handler.DeleteUser)
+
+		api.GET("/dishes", handler.GetDishes)
+		api.GET("/dishes/:id", handler.GetDish)
+		api.POST("/dishes", handler.CreateDish)
+		api.PUT("/dishes/:id", handler.UpdateDish)
+		api.DELETE("/dishes/:id", handler.DeleteDish)
+
+		api.GET("/suppliers", handler.GetSuppliers)
+		api.GET("/suppliers/:id", handler.GetSupplier)
+		api.POST("/suppliers", handler.CreateSupplier)
+		api.PUT("/suppliers/:id", handler.UpdateSupplier)
+		api.DELETE("/suppliers/:id", handler.DeleteSupplier)
+
+		api.GET("/recipe-standards", handler.GetRecipeStandards)
+		api.GET("/recipe-standards/:id", handler.GetRecipeStandard)
+		api.POST("/recipe-standards", handler.CreateRecipeStandard)
+		api.PUT("/recipe-standards/:id", handler.UpdateRecipeStandard)
+		api.DELETE("/recipe-standards/:id", handler.DeleteRecipeStandard)
+		api.GET("/recipe-standards/dish/:dishId", handler.GetRecipeStandardsByDish)
+
+		api.GET("/supplier-prices", handler.GetSupplierPrices)
+		api.GET("/supplier-prices/ingredient/:ingredientId", handler.GetSupplierPricesByIngredient)
+		api.GET("/supplier-prices/supplier/:supplierId", handler.GetSupplierPricesBySupplier)
+		api.GET("/supplier-prices/:id", handler.GetSupplierPrice)
+		api.POST("/supplier-prices", handler.CreateSupplierPrice)
+		api.PUT("/supplier-prices/:id", handler.UpdateSupplierPrice)
+		api.DELETE("/supplier-prices/:id", handler.DeleteSupplierPrice)
+
+		api.GET("/orders", handler.GetOrders)
+		api.GET("/orders/:id", handler.GetOrder)
+		api.GET("/orders/:id/ingredients/summary", handler.GetOrderIngredientsSummary)
+		api.GET("/orders/:id/ingredients/:ingredientId/summary", handler.GetOrderIngredientSummary)
+		api.GET("/orders/:id/selected-suppliers", handler.GetOrderSelectedSuppliers)
+		api.POST("/orders", handler.CreateOrder)
+		api.POST("/orders/:id/supplier-requests", handler.SaveOrderIngredientsWithSupplier)
+		api.PATCH("/orders/:id/status", handler.UpdateOrderStatus)
+		api.DELETE("/orders/:id", handler.DeleteOrder)
+
+		// Best supplier selection - returns data to frontend only
+		api.GET("/orders/:id/best-suppliers", handler.GetBestSuppliersForOrder)
+		api.POST("/orders/best-suppliers", handler.GetBestSuppliersForIngredients)
+	}
+
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
+	return r
+}
+```
+
+### store/
+
+#### store/gorm.go
+*Language: Go | Size: 1630 bytes*
+
+```go
+package store
+
+import (
+	"adong-be/models"
+	"time"
+
+	"github.com/hsdfat/go-auth-middleware/core"
+	"gorm.io/gorm"
+)
+
+type Store struct {
+	GormClient *gorm.DB
+}
+
+var DB *Store = &Store{}
+
+// Enhanced UserProvider interface
+type UserProvider interface {
+	GetUserByUsername(username string) (*core.User, error)
+	GetUserByID(userID string) (*core.User, error)
+	GetUserByEmail(email string) (*core.User, error)
+	UpdateUserLastLogin(userID string, lastLogin time.Time) error
+	IsUserActive(userID string) (bool, error)
+}
+
+func (s *Store) GetUserByUsername(username string) (*core.User, error) {
+	var dbUser models.User
+	if err := s.GormClient.First(&dbUser, "user_name = ?", username).Error; err != nil {
+		return nil, err
+	}
+	return convertToCoreUser(dbUser), nil
+}
+
+func (s *Store) GetUserByID(userID string) (*core.User, error) {
+	var dbUser models.User
+	if err := s.GormClient.First(&dbUser, "user_id = ?", userID).Error; err != nil {
+		return nil, err
+	}
+	return convertToCoreUser(dbUser), nil
+}
+
+func (s *Store) GetUserByEmail(email string) (*core.User, error) {
+	var user models.User
+	if err := s.GormClient.Where("email = ?", email).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return convertToCoreUser(user), nil
+}
+
+func (s *Store) UpdateUserLastLogin(userID string, lastLogin time.Time) error {
+	return nil
+}
+
+func (s *Store) IsUserActive(userID string) (bool, error) {
+	return true, nil
+}
+
+func convertToCoreUser(dbUser models.User) *core.User {
+	return &core.User{
+		ID: dbUser.UserID,
+		Username: dbUser.UserID,
+		Email:    dbUser.Email,
+		Password: dbUser.Password,
+		Role:     dbUser.Role,
+		IsActive: true,
+	}
+}
+```
+
+#### store/token.go
+*Language: Go | Size: 6586 bytes*
+
+```go
+package store
+
+import (
+	"adong-be/logger"
+	"adong-be/models"
+	"time"
+
+	"github.com/hsdfat/go-auth-middleware/core"
+)
+
+var TokenInterface core.TokenStorage
+
+// Enhanced TokenStorage interface for refresh token support
+type TokenStorage interface {
+	// Access token methods
+	StoreTokenPair(sessionID string, accessToken, refreshToken string, accessExpiresAt, refreshExpiresAt time.Time, userID string) error
+	GetAccessToken(sessionID string) (string, error)
+	GetRefreshToken(sessionID string) (string, error)
+
+	// Token validation
+	IsAccessTokenValid(sessionID string) (bool, error)
+	IsRefreshTokenValid(sessionID string) (bool, error)
+
+	// Token management
+	DeleteTokenPair(sessionID string) error
+	RefreshTokenPair(sessionID string, newAccessToken, newRefreshToken string, accessExpiresAt, refreshExpiresAt time.Time) error
+
+	// User session management
+	RevokeAllUserTokens(userID string) error
+	GetUserActiveSessions(userID string) ([]string, error)
+
+	// Session tracking
+	StoreUserSession(session core.UserSession) error
+	GetUserSession(sessionID string) (*core.UserSession, error)
+	UpdateSessionActivity(sessionID string, lastActivity time.Time) error
+	DeleteUserSession(sessionID string) error
+
+	// Cleanup expired tokens
+	CleanupExpiredTokens() error
+}
+
+func NewTokenInterface() core.TokenStorage {
+	return TokenInterface
+}
+
+func SetTokenInterface(tokenInterface core.TokenStorage) {
+	TokenInterface = tokenInterface
+}
+
+func (s *Store) StoreTokenPair(sessionID string, accessToken, refreshToken string, accessExpiresAt, refreshExpiresAt time.Time, userID string) error {
+	return s.GormClient.Create(&models.TokenPair{
+		SessionID:        sessionID,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		AccessExpiresAt:  accessExpiresAt,
+		RefreshExpiresAt: refreshExpiresAt,
+		UserID:           userID,
+	}).Error
+}
+
+func (s *Store) GetAccessToken(sessionID string) (string, error) {
+	var tokenPair models.TokenPair
+	if err := s.GormClient.First(&tokenPair, "session_id = ?", sessionID).Error; err != nil {
+		return "", err
+	}
+	return tokenPair.AccessToken, nil
+}
+
+func (s *Store) GetRefreshToken(sessionID string) (string, error) {
+	var tokenPair models.TokenPair
+	if err := s.GormClient.First(&tokenPair, "session_id = ?", sessionID).Error; err != nil {
+		return "", err
+	}
+	return tokenPair.RefreshToken, nil
+}
+
+func (s *Store) IsAccessTokenValid(sessionID string) (bool, error) {
+	var tokenPair models.TokenPair
+	if err := s.GormClient.First(&tokenPair, "session_id = ?", sessionID).Error; err != nil {
+		return false, err
+	}
+	return tokenPair.AccessToken != "" && tokenPair.AccessExpiresAt.After(time.Now()), nil
+}
+
+func (s *Store) IsRefreshTokenValid(sessionID string) (bool, error) {
+	var tokenPair models.TokenPair
+	if err := s.GormClient.First(&tokenPair, "session_id = ?", sessionID).Error; err != nil {
+		return false, err
+	}
+	return tokenPair.RefreshToken != "" && tokenPair.RefreshExpiresAt.After(time.Now()), nil
+}
+
+func (s *Store) DeleteTokenPair(sessionID string) error {
+	return s.GormClient.Delete(&models.TokenPair{}, "session_id = ?", sessionID).Error
+}
+
+func (s *Store) RefreshTokenPair(sessionID string, newAccessToken, newRefreshToken string, accessExpiresAt, refreshExpiresAt time.Time) error {
+	return s.GormClient.Model(&models.TokenPair{}).Where("session_id = ?", sessionID).Updates(models.TokenPair{
+		AccessToken:      newAccessToken,
+		RefreshToken:     newRefreshToken,
+		AccessExpiresAt:  accessExpiresAt,
+		RefreshExpiresAt: refreshExpiresAt,
+	}).Error
+}
+
+func (s *Store) RevokeAllUserTokens(userID string) error {
+	return s.GormClient.Delete(&models.TokenPair{}, "user_id = ?", userID).Error
+}
+
+func (s *Store) GetUserActiveSessions(userID string) ([]string, error) {
+	var tokenPairs []models.TokenPair
+	if err := s.GormClient.Where("user_id = ?", userID).Find(&tokenPairs).Error; err != nil {
+		return nil, err
+	}
+	var sessionIDs []string
+	for _, tokenPair := range tokenPairs {
+		sessionIDs = append(sessionIDs, tokenPair.SessionID)
+	}
+	return sessionIDs, nil
+}
+
+func (s *Store) UpdateSessionActivity(sessionID string, lastActivity time.Time) error {
+	return s.GormClient.Model(&models.TokenPair{}).Where("session_id = ?", sessionID).Update("last_activity", lastActivity).Error
+}
+
+func (s *Store) StoreUserSession(session core.UserSession) error {
+	// Convert core.UserSession to models.UserSession
+	userSession := models.UserSession{
+		SessionID:    session.SessionID,
+		UserID:       session.UserID,
+		IPAddress:    session.IPAddress,
+		UserAgent:    session.UserAgent,
+		LastActivity: session.LastActivity,
+		// IsActive:     session.IsActive,
+		// LoginTime:    session.LoginTime,
+		// LogoutTime:   session.LogoutTime,
+	}
+	return s.GormClient.Create(&userSession).Error
+}
+
+func (s *Store) GetUserSession(sessionID string) (*core.UserSession, error) {
+	var userSession models.UserSession
+	if err := s.GormClient.First(&userSession, "session_id = ?", sessionID).Error; err != nil {
+		return nil, err
+	}
+
+	// Convert models.UserSession to core.UserSession
+	return &core.UserSession{
+		SessionID:    userSession.SessionID,
+		UserID:       userSession.UserID,
+		IPAddress:    userSession.IPAddress,
+		UserAgent:    userSession.UserAgent,
+		LastActivity: userSession.LastActivity,
+		// IsActive:     userSession.IsActive,
+		// LoginTime:    userSession.LoginTime,
+		// LogoutTime:   userSession.LogoutTime,
+	}, nil
+}
+
+func (s *Store) DeleteUserSession(sessionID string) error {
+	// Update logout time before deleting
+	now := time.Now()
+	if err := s.GormClient.Model(&models.UserSession{}).Where("session_id = ?", sessionID).Update("logout_time", now).Error; err != nil {
+		// If session doesn't exist, continue with token deletion
+		logger.Log.Error("Failed to update session logout time", "error", err)
+	}
+
+	// Delete from both token pairs and user sessions
+	if err := s.GormClient.Delete(&models.TokenPair{}, "session_id = ?", sessionID).Error; err != nil {
+		logger.Log.Error("Fail to delete token pair", "error", err)
+		return err
+	}
+	err := s.GormClient.Delete(&models.UserSession{}, "session_id = ?", sessionID).Error
+	if err != nil {
+		logger.Log.Error("Fail to delete user session", "error", err)
+		return err
+	}
+	return nil
+}
+
+func (s *Store) CleanupExpiredTokens() error {
+	return s.GormClient.Where("access_expires_at < ?", time.Now()).Delete(&models.TokenPair{}).Error
+}
+
+func (s *Store) GetTokenPair(sessionID string) (*models.TokenPair, error) {
+	var tokenPair models.TokenPair
+	if err := s.GormClient.First(&tokenPair, "session_id = ?", sessionID).Error; err != nil {
+		return nil, err
+	}
+	return &tokenPair, nil
 }
 ```
 
