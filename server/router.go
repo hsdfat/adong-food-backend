@@ -165,6 +165,7 @@ func SetupRouter() *gin.Engine {
 		api.GET("/orders/:id", handler.GetOrder)
 		api.GET("/orders/:id/ingredients/summary", handler.GetOrderIngredientsSummary)
 		api.GET("/orders/:id/ingredients/:ingredientId/summary", handler.GetOrderIngredientSummary)
+		api.GET("/orders/:id/selected-suppliers", handler.GetOrderSelectedSuppliers)
 		api.POST("/orders", handler.CreateOrder)
 		api.POST("/orders/:id/supplier-requests", handler.SaveOrderIngredientsWithSupplier)
 		api.PATCH("/orders/:id/status", handler.UpdateOrderStatus)
@@ -172,6 +173,7 @@ func SetupRouter() *gin.Engine {
 
 		// Best supplier selection - returns data to frontend only
 		api.GET("/orders/:id/best-suppliers", handler.GetBestSuppliersForOrder)
+		api.POST("/orders/best-suppliers", handler.GetBestSuppliersForIngredients)
 	}
 
 	r.GET("/health", func(c *gin.Context) {

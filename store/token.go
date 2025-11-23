@@ -1,6 +1,7 @@
 package store
 
 import (
+	"adong-be/logger"
 	"adong-be/models"
 	"time"
 
@@ -157,11 +158,24 @@ func (s *Store) GetUserSession(sessionID string) (*core.UserSession, error) {
 }
 
 func (s *Store) DeleteUserSession(sessionID string) error {
+	// Update logout time before deleting
+	now := time.Now()
+	if err := s.GormClient.Model(&models.UserSession{}).Where("session_id = ?", sessionID).Update("logout_time", now).Error; err != nil {
+		// If session doesn't exist, continue with token deletion
+		logger.Log.Error("Failed to update session logout time", "error", err)
+	}
+
 	// Delete from both token pairs and user sessions
 	if err := s.GormClient.Delete(&models.TokenPair{}, "session_id = ?", sessionID).Error; err != nil {
+		logger.Log.Error("Fail to delete token pair", "error", err)
 		return err
 	}
-	return s.GormClient.Delete(&models.UserSession{}, "session_id = ?", sessionID).Error
+	err := s.GormClient.Delete(&models.UserSession{}, "session_id = ?", sessionID).Error
+	if err != nil {
+		logger.Log.Error("Fail to delete user session", "error", err)
+		return err
+	}
+	return nil
 }
 
 func (s *Store) CleanupExpiredTokens() error {

@@ -388,25 +388,24 @@ func GetOrderIngredientSummary(c *gin.Context) {
 }
 
 type SupplierOption struct {
-	ProductID      int     `json:"productId"`
-	ProductName    string  `json:"productName"`
-	SupplierID     string  `json:"supplierId"`
-	SupplierName   string  `json:"supplierName"`
-	UnitPrice      float64 `json:"unitPrice"`
-	Unit           string  `json:"unit"`
-	Specification  string  `json:"specification"`
-	IsFavorite     bool    `json:"isFavorite"`
-	IsLowestPrice  bool    `json:"isLowestPrice"`
-	TotalCost      float64 `json:"totalCost"`
+	ProductID     int     `json:"productId"`
+	ProductName   string  `json:"productName"`
+	SupplierID    string  `json:"supplierId"`
+	SupplierName  string  `json:"supplierName"`
+	UnitPrice     float64 `json:"unitPrice"`
+	Unit          string  `json:"unit"`
+	Specification string  `json:"specification"`
+	IsFavorite    bool    `json:"isFavorite"`
+	IsLowestPrice bool    `json:"isLowestPrice"`
+	TotalCost     float64 `json:"totalCost"`
 }
 
 type IngredientSuppliers struct {
-	IngredientID   string           `json:"ingredientId"`
-	IngredientName string           `json:"ingredientName"`
-	TotalQuantity  float64          `json:"totalQuantity"`
-	Unit           string           `json:"unit"`
-	BestSupplier   *SupplierOption  `json:"bestSupplier"`
-	AllSuppliers   []SupplierOption `json:"allSuppliers"`
+	IngredientID   string          `json:"ingredientId"`
+	IngredientName string          `json:"ingredientName"`
+	TotalQuantity  float64         `json:"totalQuantity"`
+	Unit           string          `json:"unit"`
+	BestSupplier   *SupplierOption `json:"bestSupplier"`
 }
 
 // GetBestSuppliersForOrder returns best supplier recommendations for all ingredients
@@ -453,7 +452,7 @@ func GetBestSuppliersForOrder(c *gin.Context) {
 
 	var favorites []models.KitchenFavoriteSupplier
 	store.DB.GormClient.Where("kitchen_id = ?", order.KitchenID).Find(&favorites)
-	
+
 	favoriteMap := make(map[string]bool)
 	for _, fav := range favorites {
 		favoriteMap[fav.SupplierID] = true
@@ -482,7 +481,6 @@ func GetBestSuppliersForOrder(c *gin.Context) {
 				TotalQuantity:  ing.TotalQuantity,
 				Unit:           ing.Unit,
 				BestSupplier:   nil,
-				AllSuppliers:   []SupplierOption{},
 			})
 			continue
 		}
@@ -524,7 +522,26 @@ func GetBestSuppliersForOrder(c *gin.Context) {
 		if len(favoriteSuppliers) > 0 {
 			bestSupplier = &favoriteSuppliers[0]
 		} else {
-			bestSupplier = &allSuppliers[0]
+			// Create best supplier from the lowest price option
+			price := prices[0]
+			isFavorite := favoriteMap[price.SupplierID]
+			totalCost := ing.TotalQuantity * price.UnitPrice
+
+			bestSupplier = &SupplierOption{
+				ProductID:     price.ProductID,
+				ProductName:   price.ProductName,
+				SupplierID:    price.SupplierID,
+				UnitPrice:     price.UnitPrice,
+				Unit:          price.Unit,
+				Specification: price.Specification,
+				IsFavorite:    isFavorite,
+				IsLowestPrice: true,
+				TotalCost:     totalCost,
+			}
+
+			if price.Supplier != nil {
+				bestSupplier.SupplierName = price.Supplier.SupplierName
+			}
 		}
 
 		results = append(results, IngredientSuppliers{
@@ -533,13 +550,171 @@ func GetBestSuppliersForOrder(c *gin.Context) {
 			TotalQuantity:  ing.TotalQuantity,
 			Unit:           ing.Unit,
 			BestSupplier:   bestSupplier,
-			AllSuppliers:   allSuppliers,
 		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"orderId":     orderID,
 		"kitchenId":   order.KitchenID,
+		"ingredients": results,
+	})
+}
+
+// GetBestSuppliersForIngredients returns best supplier recommendations for a list of ingredients
+// This endpoint is for orders that haven't been saved yet
+func GetBestSuppliersForIngredients(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetBestSuppliersForIngredients called", "user_id", uid)
+
+	var request struct {
+		KitchenID   string `json:"kitchenId" binding:"required"`
+		Ingredients []struct {
+			IngredientID string  `json:"ingredientId" binding:"required"`
+			Quantity     float64 `json:"quantity" binding:"required,gt=0"`
+			Unit         string  `json:"unit" binding:"required"`
+		} `json:"ingredients" binding:"required,min=1"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		logger.Log.Error("GetBestSuppliersForIngredients bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate kitchen exists
+	var kitchen models.Kitchen
+	if err := store.DB.GormClient.First(&kitchen, "kitchen_id = ?", request.KitchenID).Error; err != nil {
+		logger.Log.Error("GetBestSuppliersForIngredients kitchen not found", "kitchen_id", request.KitchenID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kitchen not found"})
+		return
+	}
+
+	// Get favorite suppliers for the kitchen
+	var favorites []models.KitchenFavoriteSupplier
+	store.DB.GormClient.Where("kitchen_id = ?", request.KitchenID).Find(&favorites)
+
+	favoriteMap := make(map[string]bool)
+	for _, fav := range favorites {
+		favoriteMap[fav.SupplierID] = true
+	}
+
+	var results []IngredientSuppliers
+
+	// Process each ingredient from the request
+	for _, reqIng := range request.Ingredients {
+		// Validate ingredient exists and get its name
+		var ingredient models.Ingredient
+		if err := store.DB.GormClient.First(&ingredient, "ingredient_id = ?", reqIng.IngredientID).Error; err != nil {
+			logger.Log.Warn("GetBestSuppliersForIngredients ingredient not found", "ingredient_id", reqIng.IngredientID, "error", err)
+			results = append(results, IngredientSuppliers{
+				IngredientID:   reqIng.IngredientID,
+				IngredientName: "",
+				TotalQuantity:  reqIng.Quantity,
+				Unit:           reqIng.Unit,
+				BestSupplier:   nil,
+			})
+			continue
+		}
+
+		// Get supplier prices for this ingredient
+		var prices []models.SupplierPrice
+		if err := store.DB.GormClient.
+			Preload("Supplier").
+			Where("ingredient_id = ? AND active = true", reqIng.IngredientID).
+			Where("(effective_from IS NULL OR effective_from <= NOW())").
+			Where("(effective_to IS NULL OR effective_to >= NOW())").
+			Order("unit_price ASC").
+			Find(&prices).Error; err != nil {
+			logger.Log.Error("GetBestSuppliersForIngredients prices query error", "ingredient_id", reqIng.IngredientID, "error", err)
+			results = append(results, IngredientSuppliers{
+				IngredientID:   reqIng.IngredientID,
+				IngredientName: ingredient.IngredientName,
+				TotalQuantity:  reqIng.Quantity,
+				Unit:           reqIng.Unit,
+				BestSupplier:   nil,
+			})
+			continue
+		}
+
+		if len(prices) == 0 {
+			logger.Log.Warn("GetBestSuppliersForIngredients no prices found", "ingredient_id", reqIng.IngredientID)
+			results = append(results, IngredientSuppliers{
+				IngredientID:   reqIng.IngredientID,
+				IngredientName: ingredient.IngredientName,
+				TotalQuantity:  reqIng.Quantity,
+				Unit:           reqIng.Unit,
+				BestSupplier:   nil,
+			})
+			continue
+		}
+
+		lowestPrice := prices[0].UnitPrice
+
+		var bestSupplier *SupplierOption
+		var favoriteSuppliers []SupplierOption
+
+		for _, price := range prices {
+			isFavorite := favoriteMap[price.SupplierID]
+			isLowestPrice := (price.UnitPrice == lowestPrice)
+			totalCost := reqIng.Quantity * price.UnitPrice
+
+			option := SupplierOption{
+				ProductID:     price.ProductID,
+				ProductName:   price.ProductName,
+				SupplierID:    price.SupplierID,
+				UnitPrice:     price.UnitPrice,
+				Unit:          price.Unit,
+				Specification: price.Specification,
+				IsFavorite:    isFavorite,
+				IsLowestPrice: isLowestPrice,
+				TotalCost:     totalCost,
+			}
+
+			if price.Supplier != nil {
+				option.SupplierName = price.Supplier.SupplierName
+			}
+
+			if isFavorite {
+				favoriteSuppliers = append(favoriteSuppliers, option)
+			}
+		}
+
+		if len(favoriteSuppliers) > 0 {
+			bestSupplier = &favoriteSuppliers[0]
+		} else {
+			// Create best supplier from the lowest price option
+			price := prices[0]
+			isFavorite := favoriteMap[price.SupplierID]
+			totalCost := reqIng.Quantity * price.UnitPrice
+
+			bestSupplier = &SupplierOption{
+				ProductID:     price.ProductID,
+				ProductName:   price.ProductName,
+				SupplierID:    price.SupplierID,
+				UnitPrice:     price.UnitPrice,
+				Unit:          price.Unit,
+				Specification: price.Specification,
+				IsFavorite:    isFavorite,
+				IsLowestPrice: true,
+				TotalCost:     totalCost,
+			}
+
+			if price.Supplier != nil {
+				bestSupplier.SupplierName = price.Supplier.SupplierName
+			}
+		}
+
+		results = append(results, IngredientSuppliers{
+			IngredientID:   reqIng.IngredientID,
+			IngredientName: ingredient.IngredientName,
+			TotalQuantity:  reqIng.Quantity,
+			Unit:           reqIng.Unit,
+			BestSupplier:   bestSupplier,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"kitchenId":   request.KitchenID,
 		"ingredients": results,
 	})
 }
@@ -725,6 +900,43 @@ func SaveOrderIngredientsWithSupplier(c *gin.Context) {
 		"orderId":    orderID,
 		"selections": responseSelections,
 		"count":      len(savedSelections),
+	})
+}
+
+// GetOrderSelectedSuppliers returns all selected suppliers and their details for an order
+func GetOrderSelectedSuppliers(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	orderID := c.Param("id")
+	logger.Log.Info("GetOrderSelectedSuppliers called", "order_id", orderID, "user_id", uid)
+
+	// Validate order exists
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
+		logger.Log.Error("GetOrderSelectedSuppliers order not found", "order_id", orderID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	// Get all selected suppliers for this order with all related data
+	var selections []models.OrderIngredientSupplier
+	if err := store.DB.GormClient.
+		Preload("Ingredient").
+		Preload("SelectedSupplier").
+		Preload("SelectedProduct").
+		Preload("SelectedBy").
+		Where("order_id = ?", orderID).
+		Order("ingredient_id ASC").
+		Find(&selections).Error; err != nil {
+		logger.Log.Error("GetOrderSelectedSuppliers query error", "order_id", orderID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orderId":    orderID,
+		"kitchenId":  order.KitchenID,
+		"selections": selections,
+		"count":      len(selections),
 	})
 }
 
