@@ -179,6 +179,9 @@ func SetupRouter() *gin.Engine {
 		stockHandler := handler.NewInventoryStockHandler(store.DB.GormClient)
 		importHandler := handler.NewInventoryImportHandler(store.DB.GormClient)
 		exportHandler := handler.NewInventoryExportHandler(store.DB.GormClient)
+		adjustmentHandler := handler.NewInventoryAdjustmentHandler(store.DB.GormClient)
+		requestHandler := handler.NewIngredientRequestHandler(store.DB.GormClient)
+		reportsHandler := handler.NewInventoryReportsHandler(store.DB.GormClient)
 
 		// Inventory routes group
 		inventory := api.Group("/inventory")
@@ -199,12 +202,13 @@ func SetupRouter() *gin.Engine {
 			// Import management
 			imports := inventory.Group("/imports")
 			{
-				imports.GET("", importHandler.GetAllImports)              // GET /api/inventory/imports?kitchen_id=K001&status=draft
-				imports.GET("/:id", importHandler.GetImportByID)          // GET /api/inventory/imports/IM20240520-12345
-				imports.POST("", importHandler.CreateImport)              // POST /api/inventory/imports
-				imports.PUT("/:id", importHandler.UpdateImport)           // PUT /api/inventory/imports/IM20240520-12345
-				imports.POST("/:id/approve", importHandler.ApproveImport) // POST /api/inventory/imports/IM20240520-12345/approve
-				imports.DELETE("/:id", importHandler.DeleteImport)        // DELETE /api/inventory/imports/IM20240520-12345
+				imports.GET("", importHandler.GetAllImports)                                // GET /api/inventory/imports?kitchen_id=K001&status=draft
+				imports.GET("/:id", importHandler.GetImportByID)                            // GET /api/inventory/imports/IM20240520-12345
+				imports.POST("", importHandler.CreateImport)                                // POST /api/inventory/imports
+				imports.POST("/from-request/:requestId", importHandler.CreateImportFromRequest) // POST /api/inventory/imports/from-request/RQ20240520-12345
+				imports.PUT("/:id", importHandler.UpdateImport)                             // PUT /api/inventory/imports/IM20240520-12345
+				imports.POST("/:id/approve", importHandler.ApproveImport)                   // POST /api/inventory/imports/IM20240520-12345/approve
+				imports.DELETE("/:id", importHandler.DeleteImport)                          // DELETE /api/inventory/imports/IM20240520-12345
 			}
 
 			// Export management
@@ -216,6 +220,39 @@ func SetupRouter() *gin.Engine {
 				exports.PUT("/:id", exportHandler.UpdateExport)           // PUT /api/inventory/exports/EX20240520-12345
 				exports.POST("/:id/approve", exportHandler.ApproveExport) // POST /api/inventory/exports/EX20240520-12345/approve
 				exports.DELETE("/:id", exportHandler.DeleteExport)        // DELETE /api/inventory/exports/EX20240520-12345
+			}
+
+			// Adjustment management
+			adjustments := inventory.Group("/adjustments")
+			{
+				adjustments.GET("", adjustmentHandler.GetAllAdjustments)                  // GET /api/inventory/adjustments?kitchen_id=K001&adjustment_type=count
+				adjustments.GET("/:id", adjustmentHandler.GetAdjustmentByID)              // GET /api/inventory/adjustments/ADJ20240520-12345
+				adjustments.POST("", adjustmentHandler.CreateAdjustment)                  // POST /api/inventory/adjustments
+				adjustments.PUT("/:id", adjustmentHandler.UpdateAdjustment)               // PUT /api/inventory/adjustments/ADJ20240520-12345
+				adjustments.POST("/:id/approve", adjustmentHandler.ApproveAdjustment)     // POST /api/inventory/adjustments/ADJ20240520-12345/approve
+				adjustments.DELETE("/:id", adjustmentHandler.DeleteAdjustment)            // DELETE /api/inventory/adjustments/ADJ20240520-12345
+			}
+
+			// Ingredient Request management
+			requests := inventory.Group("/requests")
+			{
+				requests.GET("", requestHandler.GetAllRequests)                           // GET /api/inventory/requests?kitchen_id=K001&status=pending
+				requests.GET("/:id", requestHandler.GetRequestByID)                       // GET /api/inventory/requests/RQ20240520-12345
+				requests.POST("", requestHandler.CreateRequest)                           // POST /api/inventory/requests
+				requests.POST("/from-order/:orderId", requestHandler.CreateRequestFromOrder) // POST /api/inventory/requests/from-order/OR001
+				requests.PUT("/:id", requestHandler.UpdateRequest)                        // PUT /api/inventory/requests/RQ20240520-12345
+				requests.POST("/:id/approve", requestHandler.ApproveRequest)              // POST /api/inventory/requests/RQ20240520-12345/approve
+				requests.DELETE("/:id", requestHandler.DeleteRequest)                     // DELETE /api/inventory/requests/RQ20240520-12345
+			}
+
+			// Inventory Reports
+			reports := inventory.Group("/reports")
+			{
+				reports.GET("/stock-movement", reportsHandler.GetStockMovementReport)         // GET /api/inventory/reports/stock-movement?kitchen_id=K001&from_date=2024-01-01&to_date=2024-01-31
+				reports.GET("/expiry-alerts", reportsHandler.GetExpiryAlerts)                 // GET /api/inventory/reports/expiry-alerts?kitchen_id=K001&days_ahead=30
+				reports.GET("/stock-value-trend", reportsHandler.GetStockValueTrend)          // GET /api/inventory/reports/stock-value-trend?kitchen_id=K001&from_date=2024-01-01&to_date=2024-01-31
+				reports.GET("/transaction-summary", reportsHandler.GetTransactionSummary)     // GET /api/inventory/reports/transaction-summary?kitchen_id=K001&from_date=2024-01-01&to_date=2024-01-31
+				reports.GET("/top-consumed", reportsHandler.GetTopConsumedIngredients)        // GET /api/inventory/reports/top-consumed?kitchen_id=K001&from_date=2024-01-01&to_date=2024-01-31&limit=10
 			}
 		}
 	}

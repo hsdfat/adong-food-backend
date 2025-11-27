@@ -518,6 +518,137 @@ func (h *InventoryImportHandler) DeleteImport(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Xóa phiếu nhập thành công"})
 }
 
+// CreateImportFromRequest creates an import record from an ingredient request
+func (h *InventoryImportHandler) CreateImportFromRequest(c *gin.Context) {
+	requestID := c.Param("requestId")
+
+	var userID string
+	if identity, ok := c.Get("identity"); ok {
+		if v, ok2 := identity.(string); ok2 {
+			userID = v
+		}
+	}
+
+	// Get ingredient request with details
+	var request models.IngredientRequest
+	if err := h.DB.Preload("RequestDetails").
+		Where("request_id = ?", requestID).
+		First(&request).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy phiếu yêu cầu"})
+		return
+	}
+
+	if request.Status != "approved" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Phiếu yêu cầu chưa được duyệt"})
+		return
+	}
+
+	// Get the most common supplier from request details (or first one)
+	var mainSupplierID *string
+	if len(request.RequestDetails) > 0 {
+		supplierCount := make(map[string]int)
+		for _, detail := range request.RequestDetails {
+			if detail.SupplierID != nil {
+				supplierCount[*detail.SupplierID]++
+			}
+		}
+
+		maxCount := 0
+		for supplierID, count := range supplierCount {
+			if count > maxCount {
+				maxCount = count
+				sid := supplierID
+				mainSupplierID = &sid
+			}
+		}
+	}
+
+	tx := h.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Generate import ID
+	importDate := time.Now()
+	importID := generateImportID(importDate)
+
+	// Create import header
+	importRecord := models.InventoryImport{
+		ImportID:        importID,
+		KitchenID:       request.KitchenID,
+		ImportDate:      importDate,
+		OrderID:         &request.OrderID,
+		SupplierID:      mainSupplierID,
+		Status:          "draft",
+		CreatedByUserID: &userID,
+	}
+
+	if err := tx.Create(&importRecord).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi tạo phiếu nhập"})
+		return
+	}
+
+	// Create import details from request details
+	var totalAmount float64
+	for _, reqDetail := range request.RequestDetails {
+		var unitPrice float64
+		if reqDetail.UnitPrice != nil {
+			unitPrice = *reqDetail.UnitPrice
+		}
+
+		totalPrice := reqDetail.Quantity * unitPrice
+		totalAmount += totalPrice
+
+		importDetail := models.InventoryImportDetail{
+			ImportID:     importID,
+			IngredientID: reqDetail.IngredientID,
+			Quantity:     reqDetail.Quantity,
+			Unit:         reqDetail.Unit,
+			UnitPrice:    unitPrice,
+			TotalPrice:   totalPrice,
+		}
+
+		if err := tx.Create(&importDetail).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi tạo chi tiết phiếu nhập"})
+			return
+		}
+	}
+
+	// Update total amount
+	if err := tx.Model(&importRecord).Update("total_amount", totalAmount).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi cập nhật tổng tiền"})
+		return
+	}
+
+	// Update request status to received
+	if err := tx.Model(&request).Update("status", "received").Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi cập nhật trạng thái yêu cầu"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi lưu phiếu nhập"})
+		return
+	}
+
+	// Reload with relationships
+	h.DB.Preload("Kitchen").
+		Preload("Supplier").
+		Preload("ImportDetails.Ingredient").
+		First(&importRecord, "import_id = ?", importID)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Tạo phiếu nhập từ yêu cầu thành công",
+		"data":    importRecord,
+	})
+}
+
 // Helper functions
 func generateImportID(importDate time.Time) string {
 	return "IM" + importDate.Format("20060102") + "-" + strconv.FormatInt(time.Now().UnixNano()%100000, 10)
