@@ -7,6 +7,7 @@ import (
 	"adong-be/utils"
 	"errors"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -938,6 +939,170 @@ func GetOrderSelectedSuppliers(c *gin.Context) {
 		"selections": selections,
 		"count":      len(selections),
 	})
+}
+
+// GetSuppliersWithOrderHighlight returns all suppliers with flags indicating which are used in the order
+func GetSuppliersWithOrderHighlight(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	orderID := c.Param("id")
+	logger.Log.Info("GetSuppliersWithOrderHighlight called", "order_id", orderID, "user_id", uid)
+
+	// Validate order exists
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
+		logger.Log.Error("GetSuppliersWithOrderHighlight order not found", "order_id", orderID, "error", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	// Get all suppliers from order_ingredient_suppliers for this order
+	var orderSuppliers []models.OrderIngredientSupplier
+	if err := store.DB.GormClient.
+		Where("order_id = ?", orderID).
+		Find(&orderSuppliers).Error; err != nil {
+		logger.Log.Error("GetSuppliersWithOrderHighlight query order suppliers error", "order_id", orderID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create a map of supplier ID -> ingredient count
+	supplierUsageMap := make(map[string]int)
+	for _, os := range orderSuppliers {
+		if os.SelectedSupplierID != "" {
+			supplierUsageMap[os.SelectedSupplierID]++
+		}
+	}
+
+	// Get all suppliers from master_suppliers table
+	var allSuppliers []models.Supplier
+	if err := store.DB.GormClient.Find(&allSuppliers).Error; err != nil {
+		logger.Log.Error("GetSuppliersWithOrderHighlight query all suppliers error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Build response with flags and separate into two groups
+	var suppliersInOrder []models.SupplierWithOrderFlag
+	var suppliersNotInOrder []models.SupplierWithOrderFlag
+
+	for _, supplier := range allSuppliers {
+		ingredientCount := supplierUsageMap[supplier.SupplierID]
+		supplierWithFlag := models.SupplierWithOrderFlag{
+			SupplierID:      supplier.SupplierID,
+			SupplierName:    supplier.SupplierName,
+			Phone:           supplier.Phone,
+			Email:           supplier.Email,
+			Address:         supplier.Address,
+			Active:          supplier.Active,
+			IsUsedInOrder:   ingredientCount > 0,
+			IngredientCount: ingredientCount,
+		}
+
+		if ingredientCount > 0 {
+			suppliersInOrder = append(suppliersInOrder, supplierWithFlag)
+		} else {
+			suppliersNotInOrder = append(suppliersNotInOrder, supplierWithFlag)
+		}
+	}
+
+	// Sort suppliers in order by ingredient count (descending)
+	sort.Slice(suppliersInOrder, func(i, j int) bool {
+		if suppliersInOrder[i].IngredientCount != suppliersInOrder[j].IngredientCount {
+			return suppliersInOrder[i].IngredientCount > suppliersInOrder[j].IngredientCount
+		}
+		return suppliersInOrder[i].SupplierName < suppliersInOrder[j].SupplierName
+	})
+
+	// Sort suppliers not in order alphabetically by name
+	sort.Slice(suppliersNotInOrder, func(i, j int) bool {
+		return suppliersNotInOrder[i].SupplierName < suppliersNotInOrder[j].SupplierName
+	})
+
+	// Combine: suppliers in order first, then others
+	suppliersWithFlags := append(suppliersInOrder, suppliersNotInOrder...)
+
+	response := models.GetSuppliersForOrderResponse{
+		OrderID:   orderID,
+		Suppliers: suppliersWithFlags,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetOrderSuppliersForInventory returns order suppliers formatted for inventory import/export operations
+// Optional query parameter: supplier_id - filters ingredients to only those from this supplier
+func GetOrderSuppliersForInventory(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	orderID := c.Param("id")
+	supplierID := c.Query("supplier_id") // Optional filter
+	logger.Log.Info("GetOrderSuppliersForInventory called", "order_id", orderID, "supplier_id", supplierID, "user_id", uid)
+
+	// Validate order exists
+	var order models.Order
+	if err := store.DB.GormClient.First(&order, "order_id = ?", orderID).Error; err != nil {
+		logger.Log.Error("GetOrderSuppliersForInventory order not found", "order_id", orderID, "error", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	// Build query for selected suppliers
+	query := store.DB.GormClient.
+		Preload("Ingredient").
+		Preload("SelectedSupplier").
+		Where("order_id = ?", orderID)
+
+	// Filter by supplier if provided
+	if supplierID != "" {
+		query = query.Where("selected_supplier_id = ?", supplierID)
+		logger.Log.Info("Filtering by supplier", "supplier_id", supplierID)
+	}
+
+	// Get selected suppliers for this order
+	var selections []models.OrderIngredientSupplier
+	if err := query.Order("ingredient_id ASC").Find(&selections).Error; err != nil {
+		logger.Log.Error("GetOrderSuppliersForInventory query error", "order_id", orderID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to simplified format for inventory operations
+	suppliers := make([]models.OrderIngredientWithSupplier, len(selections))
+	for i, selection := range selections {
+		suppliers[i] = models.OrderIngredientWithSupplier{
+			OrderID:      selection.OrderID,
+			IngredientID: selection.IngredientID,
+			Quantity:     selection.Quantity,
+			Unit:         selection.Unit,
+			UnitPrice:    selection.UnitPrice,
+			TotalCost:    selection.TotalCost,
+		}
+
+		if selection.Ingredient != nil {
+			suppliers[i].IngredientName = selection.Ingredient.IngredientName
+		}
+
+		if selection.SelectedSupplier != nil {
+			suppliers[i].SupplierID = selection.SelectedSupplierID
+			suppliers[i].SupplierName = selection.SelectedSupplier.SupplierName
+		}
+	}
+
+	response := models.GetOrderSuppliersResponse{
+		OrderID:   orderID,
+		OrderDate: order.OrderDate,
+		Status:    order.Status,
+		Suppliers: suppliers,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func convertOrderToDTO(o *models.Order, includeChildren bool) models.OrderDTO {
