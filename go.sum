@@ -36,6 +36,8 @@ github.com/hsdfat/go-auth-middleware v0.0.1 h1:2YZ4ueN8zkGsG5RGLlwUsNbPZcmgvNoGA
 github.com/hsdfat/go-auth-middleware v0.0.1/go.mod h1:qQwY7LmjEFc3otr2stjK29xrG2ZFZWF46louzK2QQ3U=
 github.com/hsdfat/go-auth-middleware v0.0.2-0.20251102145001-21cf71122ac3 h1:s7gcPUojX+GBzD3SqWB/NTP8rsxatlqFtmYpUIm/Ceo=
 github.com/hsdfat/go-auth-middleware v0.0.2-0.20251102145001-21cf71122ac3/go.mod h1:qQwY7LmjEFc3otr2stjK29xrG2ZFZWF46louzK2QQ3U=
+github.com/hsdfat/go-auth-middleware v0.0.2-0.20251129063601-c97f7d960afd h1:9A/U9T/YZccusiMZmbeBp40ZuV6NIJZNmT4cxQpjp2A=
+github.com/hsdfat/go-auth-middleware v0.0.2-0.20251129063601-c97f7d960afd/go.mod h1:qQwY7LmjEFc3otr2stjK29xrG2ZFZWF46louzK2QQ3U=
 github.com/hsdfat/go-project-dump v0.0.0-20250724152935-d08ad95c2f56 h1:IpDbDpzTP3WRGnp5sviJvwXxfFRl7SXKyew5i9lsabI=
 github.com/hsdfat/go-project-dump v0.0.0-20250724152935-d08ad95c2f56/go.mod h1:+E55eG5FkuvpQT4NuG2F7rZSjV1ka3NgI959U2OuTX0=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=

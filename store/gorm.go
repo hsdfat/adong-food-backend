@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/hsdfat/go-auth-middleware/core"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -21,6 +22,14 @@ type UserProvider interface {
 	GetUserByEmail(email string) (*core.User, error)
 	UpdateUserLastLogin(userID string, lastLogin time.Time) error
 	IsUserActive(userID string) (bool, error)
+}
+
+// UserCreator interface for creating new users
+type UserCreator interface {
+	CreateUser(user *core.User) error
+	UserExists(username string, email string) (bool, error)
+	IsUsernameAvailable(username string) (bool, error)
+	IsEmailAvailable(email string) (bool, error)
 }
 
 func (s *Store) GetUserByUsername(username string) (*core.User, error) {
@@ -56,12 +65,91 @@ func (s *Store) IsUserActive(userID string) (bool, error) {
 }
 
 func convertToCoreUser(dbUser models.User) *core.User {
+	active := dbUser.Active != nil && *dbUser.Active
 	return &core.User{
-		ID: dbUser.UserID,
-		Username: dbUser.UserID,
+		ID:       dbUser.UserID,
+		Username: dbUser.UserName,
 		Email:    dbUser.Email,
 		Password: dbUser.Password,
 		Role:     dbUser.Role,
-		IsActive: true,
+		IsActive: active,
 	}
+}
+
+// UserCreator implementation
+func (s *Store) CreateUser(user *core.User) error {
+	// Hash password if not already hashed
+	hashedPassword := user.Password
+	if len(user.Password) < 60 { // bcrypt hashes are 60 chars
+		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		hashedPassword = string(hash)
+	}
+
+	active := true
+	dbUser := models.User{
+		UserID:   user.ID,
+		UserName: user.Username,
+		Password: hashedPassword,
+		FullName: user.Username, // Default to username if not provided
+		Role:     user.Role,
+		Email:    user.Email,
+		Phone:    "",
+		Active:   &active,
+	}
+
+	if err := s.GormClient.Create(&dbUser).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Store) UserExists(username string, email string) (bool, error) {
+	var count int64
+	err := s.GormClient.Model(&models.User{}).
+		Where("user_name = ? OR email = ?", username, email).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (s *Store) IsUsernameAvailable(username string) (bool, error) {
+	var count int64
+	err := s.GormClient.Model(&models.User{}).
+		Where("user_name = ?", username).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
+func (s *Store) IsEmailAvailable(email string) (bool, error) {
+	if email == "" {
+		return true, nil // Email is optional
+	}
+	var count int64
+	err := s.GormClient.Model(&models.User{}).
+		Where("email = ?", email).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
+// Helper function to hash passwords
+func HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+// Helper function to verify passwords
+func VerifyPassword(hashedPassword, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }

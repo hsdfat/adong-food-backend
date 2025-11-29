@@ -41,12 +41,18 @@ func SetupRouter() *gin.Engine {
 		// Storage and providers
 		TokenStorage: store.DB,
 		UserProvider: store.DB,
+		UserCreator:  store.DB, // Enable user creation for registration
 
 		// Authentication function
 		Authenticator: ginauth.CreateEnhancedAuthenticator(store.DB),
 
 		// Role-based authorization (example: only admin and user roles allowed)
 		RoleAuthorizator: ginauth.CreateRoleAuthorizator("Admin", "user", "moderator"),
+
+		// Registration configuration
+		EnableRegistration: true,              // Enable registration endpoint
+		RegisterableRoles:  []string{"user"},  // Only 'user' role can self-register
+		DefaultRole:        "user",            // Default role for new users
 
 		// Security settings
 		MaxConcurrentSessions: 5,         // Max 5 concurrent sessions per user
@@ -57,6 +63,7 @@ func SetupRouter() *gin.Engine {
 
 	// Public routes
 	r.POST("/auth/login", authMiddleware.LoginHandler)
+	r.POST("/auth/register", authMiddleware.RegisterHandler)
 	r.POST("/auth/refresh", authMiddleware.RefreshHandler)
 	authenticated := r.Group("/auth")
 	authenticated.Use(authMiddleware.MiddlewareFunc())

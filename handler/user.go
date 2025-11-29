@@ -93,11 +93,26 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Hash password before storing
+	if item.Password != "" {
+		hashedPassword, err := store.HashPassword(item.Password)
+		if err != nil {
+			logger.Log.Error("CreateUser hash password error", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+		item.Password = hashedPassword
+	}
+
 	if err := store.DB.GormClient.Create(&item).Error; err != nil {
 		logger.Log.Error("CreateUser db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Don't return password in response
+	item.Password = ""
 	c.JSON(http.StatusCreated, item)
 }
 
@@ -111,16 +126,37 @@ func UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
+
+	// Store old password
+	oldPassword := item.Password
+
 	if err := c.ShouldBindJSON(&item); err != nil {
 		logger.Log.Error("UpdateUser bind error", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Hash new password if provided, otherwise keep old password
+	if item.Password != "" && item.Password != oldPassword {
+		hashedPassword, err := store.HashPassword(item.Password)
+		if err != nil {
+			logger.Log.Error("UpdateUser hash password error", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+		item.Password = hashedPassword
+	} else {
+		item.Password = oldPassword
+	}
+
 	if err := store.DB.GormClient.Save(&item).Error; err != nil {
 		logger.Log.Error("UpdateUser db error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Don't return password in response
+	item.Password = ""
 	c.JSON(http.StatusOK, item)
 }
 

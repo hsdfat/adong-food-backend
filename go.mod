@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
-	github.com/hsdfat/go-auth-middleware v0.0.2-0.20251102145001-21cf71122ac3
+	github.com/hsdfat/go-auth-middleware v0.0.2-0.20251129063601-c97f7d960afd
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.0
