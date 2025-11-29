@@ -10,39 +10,23 @@ RUN --mount=type=bind,target=/app \
 # ============================================
 # Stage 2: Runtime Stage
 # ============================================
-FROM alpine:latest
+FROM scratch
 
-# Set timezone
+# Copy CA certificates for HTTPS
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Copy timezone data
+COPY --from=builder /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
 ENV TZ=Asia/Ho_Chi_Minh
 
-# Create app user for security (non-root)
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
-
-# Set working directory
-WORKDIR /app
-
 # Copy binary from builder stage
-COPY --from=builder --chown=appuser:appuser /tmp/main .
+COPY --from=builder /tmp/main /main
 
-# Copy .env file if exists (optional - can use env vars instead)
-COPY --from=builder --chown=appuser:appuser /app/.env* ./
-
-# Set ownership
-RUN chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
+# Use non-root user (numeric UID for scratch)
+USER 1000:1000
 
 # Expose application port
 EXPOSE 18080
 
-# Health check
-HEALTHCHECK --interval=30s \
-    --timeout=10s \
-    --start-period=5s \
-    --retries=3 \
-    CMD curl -f http://localhost:18080/health || exit 1
-
 # Run the application
-CMD ["./main"]
+CMD ["/main"]
