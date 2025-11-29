@@ -44,7 +44,9 @@ CREATE TABLE IF NOT EXISTS public.dish_recipe_standards
     updated_by_user_id character varying(50) COLLATE pg_catalog."default",
     created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT dish_recipe_standards_pkey PRIMARY KEY (recipe_id)
+    kitchen_id character varying(50) COLLATE pg_catalog."default",
+    CONSTRAINT dish_recipe_standards_pkey PRIMARY KEY (recipe_id),
+    CONSTRAINT unique_dish_kitchen_ingredient UNIQUE (dish_id, kitchen_id, ingredient_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.ingredient_types
@@ -415,6 +417,15 @@ ALTER TABLE IF EXISTS public.dish_recipe_standards
     ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_recipe_ingredient
     ON public.dish_recipe_standards(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.dish_recipe_standards
+    ADD CONSTRAINT fk_recipe_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+CREATE INDEX IF NOT EXISTS idx_recipe_kitchen
+    ON public.dish_recipe_standards(kitchen_id);
 
 
 ALTER TABLE IF EXISTS public.dish_recipe_standards

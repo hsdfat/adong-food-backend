@@ -32,7 +32,7 @@ func GetRecipeStandards(c *gin.Context) {
 	countDB := store.DB.GormClient.Model(&models.RecipeStandard{})
 
 	searchConfig := utils.SearchConfig{
-		Fields: []string{"dish_id", "ingredient_id"},
+		Fields: []string{"dish_id", "ingredient_id", "kitchen_id"},
 		Fuzzy:  true,
 	}
 	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
@@ -50,6 +50,7 @@ func GetRecipeStandards(c *gin.Context) {
 	allowedSortFields := map[string]string{
 		"standardId":   "recipe_id",
 		"dishId":       "dish_id",
+		"kitchenId":    "kitchen_id",
 		"ingredientId": "ingredient_id",
 		"standardPer1": "quantity_per_serving",
 	}
@@ -57,7 +58,7 @@ func GetRecipeStandards(c *gin.Context) {
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
 
 	// Preload related entities to get names
-	db = db.Preload("Dish").Preload("Ingredient").Preload("UpdatedBy")
+	db = db.Preload("Dish").Preload("Kitchen").Preload("Ingredient").Preload("UpdatedBy")
 
 	if err := db.Find(&recipes).Error; err != nil {
 		logger.Log.Error("GetRecipeStandards query error", "error", err)
@@ -83,6 +84,7 @@ func GetRecipeStandard(c *gin.Context) {
 	// Preload related entities
 	if err := store.DB.GormClient.
 		Preload("Dish").
+		Preload("Kitchen").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
 		First(&recipe, "recipe_id = ?", id).Error; err != nil {
@@ -113,6 +115,7 @@ func CreateRecipeStandard(c *gin.Context) {
 	// Reload with relationships
 	store.DB.GormClient.
 		Preload("Dish").
+		Preload("Kitchen").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
 		First(&recipe, "recipe_id = ?", recipe.StandardID)
@@ -120,6 +123,92 @@ func CreateRecipeStandard(c *gin.Context) {
 	// Return DTO
 	dto := recipe.ToDTO()
 	c.JSON(http.StatusCreated, dto)
+}
+
+// CreateRecipeStandardsBulk creates multiple recipe standards for a dish at once
+func CreateRecipeStandardsBulk(c *gin.Context) {
+	logger.Log.Info("CreateRecipeStandardsBulk called")
+
+	var recipes []models.RecipeStandard
+	if err := c.ShouldBindJSON(&recipes); err != nil {
+		logger.Log.Error("CreateRecipeStandardsBulk bind error", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(recipes) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No recipes provided"})
+		return
+	}
+
+	// Validate that all recipes have the same dish_id and kitchen_id
+	dishID := recipes[0].DishID
+	kitchenID := recipes[0].KitchenID
+	for i, recipe := range recipes {
+		if recipe.DishID != dishID {
+			logger.Log.Error("CreateRecipeStandardsBulk validation error", "error", "All recipes must have the same dish_id")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "All recipes must have the same dish_id"})
+			return
+		}
+		if recipe.KitchenID != kitchenID {
+			logger.Log.Error("CreateRecipeStandardsBulk validation error", "error", "All recipes must have the same kitchen_id")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "All recipes must have the same kitchen_id"})
+			return
+		}
+		if recipe.IngredientID == "" {
+			logger.Log.Error("CreateRecipeStandardsBulk validation error", "index", i, "error", "ingredient_id is required")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "All recipes must have ingredient_id"})
+			return
+		}
+	}
+
+	// Use transaction to ensure all-or-nothing
+	tx := store.DB.GormClient.Begin()
+	if tx.Error != nil {
+		logger.Log.Error("CreateRecipeStandardsBulk transaction begin error", "error", tx.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+
+	// Create all recipes
+	for i := range recipes {
+		if err := tx.Create(&recipes[i]).Error; err != nil {
+			tx.Rollback()
+			logger.Log.Error("CreateRecipeStandardsBulk create error", "index", i, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		logger.Log.Error("CreateRecipeStandardsBulk commit error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+
+	// Reload all recipes with relationships
+	var createdRecipes []models.RecipeStandard
+	if err := store.DB.GormClient.
+		Preload("Dish").
+		Preload("Kitchen").
+		Preload("Ingredient").
+		Preload("UpdatedBy").
+		Where("dish_id = ? AND kitchen_id = ?", dishID, kitchenID).
+		Find(&createdRecipes).Error; err != nil {
+		logger.Log.Error("CreateRecipeStandardsBulk reload error", "error", err)
+		// Still return success since recipes were created
+	}
+
+	// Convert to DTOs
+	dtos := models.ConvertRecipeStandardsToDTO(createdRecipes)
+
+	logger.Log.Info("CreateRecipeStandardsBulk success", "count", len(recipes))
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Recipe standards created successfully",
+		"count":   len(recipes),
+		"data":    dtos,
+	})
 }
 
 func UpdateRecipeStandard(c *gin.Context) {
@@ -145,6 +234,7 @@ func UpdateRecipeStandard(c *gin.Context) {
 	// Reload with relationships
 	store.DB.GormClient.
 		Preload("Dish").
+		Preload("Kitchen").
 		Preload("Ingredient").
 		Preload("UpdatedBy").
 		First(&recipe, "recipe_id = ?", recipe.StandardID)
@@ -211,10 +301,142 @@ func GetRecipeStandardsByDish(c *gin.Context) {
 	db = utils.ApplyPagination(db, params.Page, params.PageSize)
 
 	// Preload related entities to get names
-	db = db.Preload("Dish").Preload("Ingredient").Preload("UpdatedBy")
+	db = db.Preload("Dish").Preload("Kitchen").Preload("Ingredient").Preload("UpdatedBy")
 
 	if err := db.Find(&recipes).Error; err != nil {
 		logger.Log.Error("GetRecipeStandardsByDish query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to DTOs
+	dtos := models.ConvertRecipeStandardsToDTO(recipes)
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dtos,
+		Meta: meta,
+	})
+}
+
+// GetRecipeStandardsByKitchen with pagination and search - Returns ResourceCollection format with DTOs
+func GetRecipeStandardsByKitchen(c *gin.Context) {
+	logger.Log.Info("GetRecipeStandardsByKitchen called", "kitchenId", c.Param("kitchenId"))
+	kitchenId := c.Param("kitchenId")
+
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.RecipeStandard{}).Where("kitchen_id = ?", kitchenId)
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"dish_id", "ingredient_id"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetRecipeStandardsByKitchen count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var recipes []models.RecipeStandard
+	db := store.DB.GormClient.Model(&models.RecipeStandard{}).Where("kitchen_id = ?", kitchenId)
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"dishId":       "dish_id",
+		"ingredientId": "ingredient_id",
+		"standardPer1": "quantity_per_serving",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Dish").Preload("Kitchen").Preload("Ingredient").Preload("UpdatedBy")
+
+	if err := db.Find(&recipes).Error; err != nil {
+		logger.Log.Error("GetRecipeStandardsByKitchen query error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to DTOs
+	dtos := models.ConvertRecipeStandardsToDTO(recipes)
+
+	meta := models.CalculatePaginationMeta(params.Page, params.PageSize, total)
+	c.JSON(http.StatusOK, models.ResourceCollection{
+		Data: dtos,
+		Meta: meta,
+	})
+}
+
+// GetRecipeStandardsByDishAndKitchen with pagination and search - Returns ResourceCollection format with DTOs
+func GetRecipeStandardsByDishAndKitchen(c *gin.Context) {
+	logger.Log.Info("GetRecipeStandardsByDishAndKitchen called", "dishId", c.Param("dishId"), "kitchenId", c.Param("kitchenId"))
+	dishId := c.Param("dishId")
+	kitchenId := c.Param("kitchenId")
+
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	params = models.GetPaginationParams(
+		params.Page,
+		params.PageSize,
+		params.Search,
+		params.SortBy,
+		params.SortDir,
+	)
+
+	var total int64
+	countDB := store.DB.GormClient.Model(&models.RecipeStandard{}).
+		Where("dish_id = ? AND kitchen_id = ?", dishId, kitchenId)
+
+	searchConfig := utils.SearchConfig{
+		Fields: []string{"ingredient_id"},
+		Fuzzy:  true,
+	}
+	countDB = utils.ApplySearch(countDB, params.Search, searchConfig)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		logger.Log.Error("GetRecipeStandardsByDishAndKitchen count error", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var recipes []models.RecipeStandard
+	db := store.DB.GormClient.Model(&models.RecipeStandard{}).
+		Where("dish_id = ? AND kitchen_id = ?", dishId, kitchenId)
+	db = utils.ApplySearch(db, params.Search, searchConfig)
+
+	allowedSortFields := map[string]string{
+		"ingredientId": "ingredient_id",
+		"standardPer1": "quantity_per_serving",
+	}
+	db = utils.ApplySort(db, params.SortBy, params.SortDir, allowedSortFields)
+	db = utils.ApplyPagination(db, params.Page, params.PageSize)
+
+	// Preload related entities to get names
+	db = db.Preload("Dish").Preload("Kitchen").Preload("Ingredient").Preload("UpdatedBy")
+
+	if err := db.Find(&recipes).Error; err != nil {
+		logger.Log.Error("GetRecipeStandardsByDishAndKitchen query error", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

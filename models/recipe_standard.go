@@ -6,6 +6,7 @@ import "time"
 type RecipeStandard struct {
 	StandardID   int       `gorm:"primaryKey;autoIncrement;column:recipe_id" json:"standardId"`
 	DishID       string    `gorm:"column:dish_id" json:"dishId"`
+	KitchenID    string    `gorm:"column:kitchen_id;not null" json:"kitchenId"`
 	IngredientID string    `gorm:"column:ingredient_id" json:"ingredientId"`
 	Unit         string    `gorm:"column:unit" json:"unit"`
 	StandardPer1 float64   `gorm:"column:quantity_per_serving;type:decimal(10,4)" json:"standardPer1"`
@@ -17,6 +18,7 @@ type RecipeStandard struct {
 
 	// Relationships
 	Dish       *Dish       `gorm:"foreignKey:DishID;references:DishID" json:"dish,omitempty"`
+	Kitchen    *Kitchen    `gorm:"foreignKey:KitchenID;references:KitchenID" json:"kitchen,omitempty"`
 	Ingredient *Ingredient `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
 	UpdatedBy  *User       `gorm:"foreignKey:UpdatedByID;references:UserID" json:"updatedBy,omitempty"`
 }

@@ -149,9 +149,12 @@ func SetupRouter() *gin.Engine {
 		api.GET("/recipe-standards", handler.GetRecipeStandards)
 		api.GET("/recipe-standards/:id", handler.GetRecipeStandard)
 		api.POST("/recipe-standards", handler.CreateRecipeStandard)
+		api.POST("/recipe-standards/bulk", handler.CreateRecipeStandardsBulk)
 		api.PUT("/recipe-standards/:id", handler.UpdateRecipeStandard)
 		api.DELETE("/recipe-standards/:id", handler.DeleteRecipeStandard)
 		api.GET("/recipe-standards/dish/:dishId", handler.GetRecipeStandardsByDish)
+		api.GET("/recipe-standards/kitchen/:kitchenId", handler.GetRecipeStandardsByKitchen)
+		api.GET("/recipe-standards/dish/:dishId/kitchen/:kitchenId", handler.GetRecipeStandardsByDishAndKitchen)
 
 		api.GET("/supplier-prices", handler.GetSupplierPrices)
 		api.GET("/supplier-prices/ingredient/:ingredientId", handler.GetSupplierPricesByIngredient)
