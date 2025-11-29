@@ -278,7 +278,6 @@ CREATE TABLE IF NOT EXISTS public.master_users
     password character varying(255) COLLATE pg_catalog."default" NOT NULL,
     full_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
     role character varying(50) COLLATE pg_catalog."default",
-    kitchen_id character varying(50) COLLATE pg_catalog."default",
     email character varying(255) COLLATE pg_catalog."default",
     phone character varying(20) COLLATE pg_catalog."default",
     active boolean NOT NULL DEFAULT true,
@@ -286,6 +285,15 @@ CREATE TABLE IF NOT EXISTS public.master_users
     modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT master_users_pkey PRIMARY KEY (user_id),
     CONSTRAINT master_users_user_name_key UNIQUE (user_name)
+);
+
+-- Join table for many-to-many relation between users and kitchens
+CREATE TABLE IF NOT EXISTS public.user_kitchens
+(
+    user_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT user_kitchens_pkey PRIMARY KEY (user_id, kitchen_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.order_details
@@ -690,11 +698,17 @@ ALTER TABLE IF EXISTS public.master_ingredients
     ON DELETE SET NULL;
 
 
-ALTER TABLE IF EXISTS public.master_users
-    ADD CONSTRAINT fk_users_kitchen FOREIGN KEY (kitchen_id)
+ALTER TABLE IF EXISTS public.user_kitchens
+    ADD CONSTRAINT fk_user_kitchens_user FOREIGN KEY (user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS public.user_kitchens
+    ADD CONSTRAINT fk_user_kitchens_kitchen FOREIGN KEY (kitchen_id)
     REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
     ON UPDATE CASCADE
-    ON DELETE SET NULL;
+    ON DELETE CASCADE;
 
 
 ALTER TABLE IF EXISTS public.order_details

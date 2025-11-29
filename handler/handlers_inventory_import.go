@@ -44,6 +44,12 @@ type CreateImportDetailRequest struct {
 
 // GetAllImports retrieves all inventory imports with pagination and filters
 func (h *InventoryImportHandler) GetAllImports(c *gin.Context) {
+	// Kitchen-based authorization
+	scope, err := utils.GetUserKitchenScope(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -68,8 +74,36 @@ func (h *InventoryImportHandler) GetAllImports(c *gin.Context) {
 
 	countQuery := h.DB.Model(&models.InventoryImport{})
 
-	if kitchenID != "" {
-		countQuery = countQuery.Where("kitchen_id = ?", kitchenID)
+	// Apply kitchen auth for count query
+	if scope.IsAdmin {
+		if kitchenID != "" {
+			countQuery = countQuery.Where("kitchen_id = ?", kitchenID)
+		}
+	} else {
+		if len(scope.KitchenIDs) == 0 {
+			meta := models.CalculatePaginationMeta(params.Page, params.PageSize, 0)
+			c.JSON(http.StatusOK, models.ResourceCollection{
+				Data: []models.InventoryImport{},
+				Meta: meta,
+			})
+			return
+		}
+		if kitchenID != "" {
+			allowed := false
+			for _, kid := range scope.KitchenIDs {
+				if kid == kitchenID {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access to this kitchen is not allowed"})
+				return
+			}
+			countQuery = countQuery.Where("kitchen_id = ?", kitchenID)
+		} else {
+			countQuery = countQuery.Where("kitchen_id IN ?", scope.KitchenIDs)
+		}
 	}
 	if status != "" {
 		countQuery = countQuery.Where("status = ?", status)
@@ -88,8 +122,17 @@ func (h *InventoryImportHandler) GetAllImports(c *gin.Context) {
 
 	query := h.DB.Model(&models.InventoryImport{})
 
-	if kitchenID != "" {
-		query = query.Where("kitchen_id = ?", kitchenID)
+	// Apply same kitchen restriction to data query
+	if scope.IsAdmin {
+		if kitchenID != "" {
+			query = query.Where("kitchen_id = ?", kitchenID)
+		}
+	} else {
+		if kitchenID != "" {
+			query = query.Where("kitchen_id = ?", kitchenID)
+		} else {
+			query = query.Where("kitchen_id IN ?", scope.KitchenIDs)
+		}
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)

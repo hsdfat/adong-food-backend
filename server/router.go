@@ -122,7 +122,8 @@ func SetupRouter() *gin.Engine {
 		api.PUT("/ingredients/:id", handler.UpdateIngredient)
 		api.DELETE("/ingredients/:id", handler.DeleteIngredient)
 
-		api.GET("/kitchens", handler.GetKitchens)
+			api.GET("/kitchens", handler.GetKitchens)
+			api.GET("/kitchens/my", handler.GetMyKitchens)
 		api.GET("/kitchens/:id", handler.GetKitchen)
 		api.POST("/kitchens", handler.CreateKitchen)
 		api.PUT("/kitchens/:id", handler.UpdateKitchen)

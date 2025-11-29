@@ -19,6 +19,14 @@ func GetOrders(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("GetOrders called", "user_id", uid)
 
+	// Load user scope for kitchen-based authorization
+	scope, err := utils.GetUserKitchenScope(c)
+	if err != nil {
+		logger.Log.Error("GetOrders auth scope error", "error", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		logger.Log.Error("GetOrders bind query error", "error", err)
@@ -50,9 +58,44 @@ func GetOrders(c *gin.Context) {
 		dataDB = dataDB.Where("note ILIKE ? OR order_id ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 		countDB = countDB.Where("note ILIKE ? OR order_id ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
-	if kitchenID != "" {
-		dataDB = dataDB.Where("kitchen_id = ?", kitchenID)
-		countDB = countDB.Where("kitchen_id = ?", kitchenID)
+	// Kitchen-based authorization:
+	// - Admin: can optionally filter by any kitchen_id or see all
+	// - Non-admin: can only see orders for their assigned kitchens
+	if scope.IsAdmin {
+		if kitchenID != "" {
+			dataDB = dataDB.Where("kitchen_id = ?", kitchenID)
+			countDB = countDB.Where("kitchen_id = ?", kitchenID)
+		}
+	} else {
+		// Non-admin: restrict to allowed kitchens
+		if len(scope.KitchenIDs) == 0 {
+			// No kitchens assigned -> no data
+			c.JSON(http.StatusOK, models.ResourceCollection{
+				Data: []models.OrderDTO{},
+				Meta: models.CalculatePaginationMeta(params.Page, params.PageSize, 0),
+			})
+			return
+		}
+		if kitchenID != "" {
+			// Ensure requested kitchen is in user's allowed list
+			allowed := false
+			for _, kid := range scope.KitchenIDs {
+				if kid == kitchenID {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access to this kitchen is not allowed"})
+				return
+			}
+			dataDB = dataDB.Where("kitchen_id = ?", kitchenID)
+			countDB = countDB.Where("kitchen_id = ?", kitchenID)
+		} else {
+			// No explicit kitchen_id -> restrict to all user's kitchens
+			dataDB = dataDB.Where("kitchen_id IN ?", scope.KitchenIDs)
+			countDB = countDB.Where("kitchen_id IN ?", scope.KitchenIDs)
+		}
 	}
 	if status != "" {
 		dataDB = dataDB.Where("status = ?", status)

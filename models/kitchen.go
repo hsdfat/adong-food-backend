@@ -13,6 +13,8 @@ type Kitchen struct {
 	ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 
 	// Relationships
+	// Many-to-many: one kitchen can have many users
+	Users             []User                    `gorm:"many2many:user_kitchens" json:"users,omitempty"`
 	FavoriteSuppliers []KitchenFavoriteSupplier `gorm:"foreignKey:KitchenID;references:KitchenID" json:"favoriteSuppliers,omitempty"`
 }
 

@@ -14,6 +14,7 @@ import (
 func GetKitchens(c *gin.Context) {
 	uid, _ := c.Get("identity")
 	logger.Log.Info("GetKitchens called", "user_id", uid)
+
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		logger.Log.Error("GetKitchens bind query error", "error", err)
@@ -81,6 +82,43 @@ func GetKitchen(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, item)
+}
+
+// GetMyKitchens returns the list of kitchens the current user can access.
+// Admin users receive all kitchens, other roles only their assigned kitchens.
+func GetMyKitchens(c *gin.Context) {
+	uid, _ := c.Get("identity")
+	logger.Log.Info("GetMyKitchens called", "user_id", uid)
+
+	scope, err := utils.GetUserKitchenScope(c)
+	if err != nil {
+		logger.Log.Error("GetMyKitchens auth scope error", "error", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var kitchens []models.Kitchen
+	db := store.DB.GormClient.Model(&models.Kitchen{})
+
+	if scope.IsAdmin {
+		if err := db.Find(&kitchens).Error; err != nil {
+			logger.Log.Error("GetMyKitchens query error (admin)", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		if len(scope.KitchenIDs) == 0 {
+			c.JSON(http.StatusOK, gin.H{"data": []models.Kitchen{}})
+			return
+		}
+		if err := db.Where("kitchen_id IN ?", scope.KitchenIDs).Find(&kitchens).Error; err != nil {
+			logger.Log.Error("GetMyKitchens query error", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": kitchens})
 }
 
 func CreateKitchen(c *gin.Context) {
