@@ -15,8 +15,8 @@ FROM scratch
 # Copy CA certificates for HTTPS
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy timezone data
-COPY --from=builder /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
+# Copy all timezone data (entire zoneinfo directory)
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 ENV TZ=Asia/Ho_Chi_Minh
 
 # Copy binary from builder stage
