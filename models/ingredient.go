@@ -24,6 +24,7 @@ type Ingredient struct {
 	Property         string          `gorm:"column:properties" json:"property"`
 	MaterialGroup    string          `gorm:"column:material_group" json:"materialGroup"`
 	Unit             string          `gorm:"column:unit;not null" json:"unit"`
+	LegacyID         *string         `gorm:"column:legacy_id" json:"legacyId,omitempty"`
 	CreatedDate      time.Time       `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
 	ModifiedDate     time.Time       `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 	IngredientType   *IngredientType `gorm:"foreignKey:IngredientTypeID;references:IngredientTypeID" json:"ingredientType,omitempty"`

@@ -9,7 +9,6 @@ BEGIN;
 -- Clear all existing users and related data
 DELETE FROM auth_user_sessions;
 DELETE FROM auth_token_pairs;
-DELETE FROM master_users;
 
 -- Insert admin user
 -- Password hash for 'admin@adong' generated with bcrypt cost 10

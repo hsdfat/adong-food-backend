@@ -225,6 +225,7 @@ CREATE TABLE IF NOT EXISTS public.master_dishes
     category character varying(100) COLLATE pg_catalog."default",
     description text COLLATE pg_catalog."default",
     active boolean NOT NULL DEFAULT true,
+    legacy_id character varying(50) COLLATE pg_catalog."default",
     created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT master_dishes_pkey PRIMARY KEY (dish_id),
@@ -239,6 +240,7 @@ CREATE TABLE IF NOT EXISTS public.master_ingredients
     properties character varying(100) COLLATE pg_catalog."default",
     material_group character varying(100) COLLATE pg_catalog."default",
     unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    legacy_id character varying(50) COLLATE pg_catalog."default",
     created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT master_ingredients_pkey PRIMARY KEY (ingredient_id),
@@ -252,6 +254,7 @@ CREATE TABLE IF NOT EXISTS public.master_kitchens
     address text COLLATE pg_catalog."default",
     phone character varying(20) COLLATE pg_catalog."default",
     active boolean NOT NULL DEFAULT true,
+    legacy_id character varying(50) COLLATE pg_catalog."default",
     created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT master_kitchens_pkey PRIMARY KEY (kitchen_id)
@@ -266,6 +269,7 @@ CREATE TABLE IF NOT EXISTS public.master_suppliers
     phone character varying(20) COLLATE pg_catalog."default",
     email character varying(255) COLLATE pg_catalog."default",
     active boolean NOT NULL DEFAULT true,
+    legacy_id character varying(50) COLLATE pg_catalog."default",
     created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT master_suppliers_pkey PRIMARY KEY (supplier_id)
@@ -282,6 +286,7 @@ CREATE TABLE IF NOT EXISTS public.master_users
     email character varying(255) COLLATE pg_catalog."default",
     phone character varying(20) COLLATE pg_catalog."default",
     active boolean NOT NULL DEFAULT true,
+    legacy_id character varying(50) COLLATE pg_catalog."default",
     created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     plain_password character varying(255) COLLATE pg_catalog."default",
@@ -833,5 +838,22 @@ ALTER TABLE IF EXISTS public.supplier_price_list
     ON DELETE RESTRICT;
 CREATE INDEX IF NOT EXISTS idx_supplier_price_supplier
     ON public.supplier_price_list(supplier_id);
+
+
+-- Create indexes for legacy_id columns in master data tables
+CREATE INDEX IF NOT EXISTS idx_master_dishes_legacy_id
+    ON public.master_dishes(legacy_id);
+
+CREATE INDEX IF NOT EXISTS idx_master_ingredients_legacy_id
+    ON public.master_ingredients(legacy_id);
+
+CREATE INDEX IF NOT EXISTS idx_master_kitchens_legacy_id
+    ON public.master_kitchens(legacy_id);
+
+CREATE INDEX IF NOT EXISTS idx_master_suppliers_legacy_id
+    ON public.master_suppliers(legacy_id);
+
+CREATE INDEX IF NOT EXISTS idx_master_users_legacy_id
+    ON public.master_users(legacy_id);
 
 END;

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"adong-be/migrate"
 	"adong-be/server"
 	"adong-be/store"
 	"log"
@@ -30,6 +31,11 @@ func main() {
 	}
 
 	log.Println("Database connected successfully")
+
+	// Run auto-migration to initialize schema if needed
+	if err := migrate.AutoMigrate(store.DB.GormClient); err != nil {
+		log.Fatal("Failed to auto-migrate database:", err)
+	}
 	s := server.SetupRouter() 
 	// Start server
 	port := os.Getenv("PORT")

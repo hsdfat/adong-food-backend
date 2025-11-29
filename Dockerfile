@@ -4,8 +4,11 @@
 FROM golang:1.25-alpine AS builder
 WORKDIR /app
 
-RUN --mount=type=bind,target=/app \
-    go build -o /tmp/main cmd/main.go
+# Copy entire project for build (needed for embedded SQL files)
+COPY . .
+
+# Build the application
+RUN go build -o /tmp/main cmd/main.go
 
 # ============================================
 # Stage 2: Runtime Stage

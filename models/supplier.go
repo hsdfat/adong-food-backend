@@ -11,6 +11,7 @@ type Supplier struct {
 	Phone        string    `gorm:"column:phone" json:"phone"`
 	Email        string    `gorm:"column:email" json:"email"`
 	Active       *bool     `gorm:"column:active;default:true" json:"active"`
+	LegacyID     *string   `gorm:"column:legacy_id" json:"legacyId,omitempty"`
 	CreatedDate  time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
 	ModifiedDate time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 }

@@ -1,0 +1,14 @@
+# Ignore unnecessary files during Docker build
+.env
+.git
+.gitignore
+*.md
+!migrate/README.md
+.vscode
+.idea
+*.log
+tmp/
+vendor/
+*.test
+*.out
+coverage.txt

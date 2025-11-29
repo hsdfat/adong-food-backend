@@ -10,6 +10,7 @@ type Dish struct {
     Group         string    `gorm:"column:category" json:"group"`
     Description   string    `gorm:"column:description;type:text" json:"description"`
 	Active        *bool     `gorm:"column:active;default:true" json:"active"`
+	LegacyID      *string   `gorm:"column:legacy_id" json:"legacyId,omitempty"`
     CreatedDate   time.Time `gorm:"column:created_date;autoCreateTime" json:"createdDate"`
     ModifiedDate  time.Time `gorm:"column:modified_date;autoUpdateTime" json:"modifiedDate"`
 }
