@@ -3,6 +3,7 @@ package handler
 import (
 	"adong-be/models"
 	"adong-be/utils"
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -32,6 +33,7 @@ type CreateImportRequest struct {
 
 type CreateImportDetailRequest struct {
 	IngredientID string  `json:"ingredientId" binding:"required"`
+	SupplierID   *string `json:"supplierId"`
 	Quantity     float64 `json:"quantity" binding:"required,gt=0"`
 	Unit         string  `json:"unit" binding:"required"`
 	UnitPrice    float64 `json:"unitPrice" binding:"required,gt=0"`
@@ -140,6 +142,7 @@ func (h *InventoryImportHandler) GetImportByID(c *gin.Context) {
 		Preload("ApprovedBy").
 		Preload("CreatedBy").
 		Preload("ImportDetails.Ingredient").
+		Preload("ImportDetails.Supplier").
 		Where("import_id = ?", importID).
 		First(&importRecord).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -168,6 +171,10 @@ func (h *InventoryImportHandler) CreateImport(c *gin.Context) {
 		}
 	}
 
+	// Add logging
+	println("[CreateImport] Starting import creation for user:", userID)
+	println("[CreateImport] Number of details:", len(req.ImportDetails))
+
 	importDate, err := time.Parse("2006-01-02", req.ImportDate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Định dạng ngày không hợp lệ"})
@@ -177,10 +184,20 @@ func (h *InventoryImportHandler) CreateImport(c *gin.Context) {
 	// Generate import ID
 	importID := generateImportID(importDate)
 
-	// Start transaction
-	tx := h.DB.Begin()
+	// Start transaction with timeout
+	println("[CreateImport] Starting transaction")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	tx := h.DB.WithContext(ctx).Begin()
+	if tx.Error != nil {
+		println("[CreateImport] Failed to begin transaction:", tx.Error.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi bắt đầu giao dịch"})
+		return
+	}
 	defer func() {
 		if r := recover(); r != nil {
+			println("[CreateImport] Panic occurred, rolling back:", r)
 			tx.Rollback()
 		}
 	}()
@@ -202,15 +219,20 @@ func (h *InventoryImportHandler) CreateImport(c *gin.Context) {
 		CreatedByUserID: &userID,
 	}
 
+	println("[CreateImport] Creating import header:", importID)
 	if err := tx.Create(&importRecord).Error; err != nil {
+		println("[CreateImport] Failed to create import header:", err.Error())
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi tạo phiếu nhập"})
 		return
 	}
+	println("[CreateImport] Import header created successfully")
 
 	// Create import details and calculate total
 	var totalAmount float64
-	for _, detail := range req.ImportDetails {
+	println("[CreateImport] Creating import details, count:", len(req.ImportDetails))
+	for i, detail := range req.ImportDetails {
+		println("[CreateImport] Creating detail", i+1, "for ingredient:", detail.IngredientID)
 		totalPrice := detail.Quantity * detail.UnitPrice
 		totalAmount += totalPrice
 
@@ -225,6 +247,7 @@ func (h *InventoryImportHandler) CreateImport(c *gin.Context) {
 		importDetail := models.InventoryImportDetail{
 			ImportID:     importID,
 			IngredientID: detail.IngredientID,
+			SupplierID:   detail.SupplierID,
 			Quantity:     detail.Quantity,
 			Unit:         detail.Unit,
 			UnitPrice:    detail.UnitPrice,
@@ -235,30 +258,43 @@ func (h *InventoryImportHandler) CreateImport(c *gin.Context) {
 		}
 
 		if err := tx.Create(&importDetail).Error; err != nil {
+			println("[CreateImport] Failed to create detail", i+1, ":", err.Error())
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi tạo chi tiết phiếu nhập"})
 			return
 		}
+		println("[CreateImport] Detail", i+1, "created successfully")
 	}
 
 	// Update total amount
+	println("[CreateImport] Updating total amount:", totalAmount)
 	if err := tx.Model(&importRecord).Update("total_amount", totalAmount).Error; err != nil {
+		println("[CreateImport] Failed to update total amount:", err.Error())
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi cập nhật tổng tiền"})
 		return
 	}
 
+	println("[CreateImport] Committing transaction")
 	if err := tx.Commit().Error; err != nil {
+		println("[CreateImport] Failed to commit transaction:", err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi khi lưu phiếu nhập"})
 		return
 	}
+	println("[CreateImport] Transaction committed successfully")
 
 	// Reload with relationships
-	h.DB.Preload("Kitchen").
+	println("[CreateImport] Reloading import with relationships")
+	if err := h.DB.Preload("Kitchen").
 		Preload("Supplier").
 		Preload("ImportDetails.Ingredient").
-		First(&importRecord, "import_id = ?", importID)
+		Preload("ImportDetails.Supplier").
+		First(&importRecord, "import_id = ?", importID).Error; err != nil {
+		println("[CreateImport] Failed to reload import:", err.Error())
+		// Don't fail here, just return what we have
+	}
 
+	println("[CreateImport] Import created successfully:", importID)
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Tạo phiếu nhập thành công",
 		"data":    importRecord,
@@ -338,6 +374,7 @@ func (h *InventoryImportHandler) UpdateImport(c *gin.Context) {
 		importDetail := models.InventoryImportDetail{
 			ImportID:     importID,
 			IngredientID: detail.IngredientID,
+			SupplierID:   detail.SupplierID,
 			Quantity:     detail.Quantity,
 			Unit:         detail.Unit,
 			UnitPrice:    detail.UnitPrice,
@@ -369,6 +406,7 @@ func (h *InventoryImportHandler) UpdateImport(c *gin.Context) {
 	h.DB.Preload("Kitchen").
 		Preload("Supplier").
 		Preload("ImportDetails.Ingredient").
+		Preload("ImportDetails.Supplier").
 		First(&existingImport, "import_id = ?", importID)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -605,6 +643,7 @@ func (h *InventoryImportHandler) CreateImportFromRequest(c *gin.Context) {
 		importDetail := models.InventoryImportDetail{
 			ImportID:     importID,
 			IngredientID: reqDetail.IngredientID,
+			SupplierID:   reqDetail.SupplierID,
 			Quantity:     reqDetail.Quantity,
 			Unit:         reqDetail.Unit,
 			UnitPrice:    unitPrice,
@@ -641,6 +680,7 @@ func (h *InventoryImportHandler) CreateImportFromRequest(c *gin.Context) {
 	h.DB.Preload("Kitchen").
 		Preload("Supplier").
 		Preload("ImportDetails.Ingredient").
+		Preload("ImportDetails.Supplier").
 		First(&importRecord, "import_id = ?", importID)
 
 	c.JSON(http.StatusCreated, gin.H{

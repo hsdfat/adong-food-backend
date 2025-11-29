@@ -60,6 +60,7 @@ type InventoryImportDetail struct {
 	ImportDetailID int        `gorm:"column:import_detail_id;primaryKey;autoIncrement" json:"importDetailId"`
 	ImportID       string     `gorm:"column:import_id;not null" json:"importId"`
 	IngredientID   string     `gorm:"column:ingredient_id;not null" json:"ingredientId"`
+	SupplierID     *string    `gorm:"column:supplier_id" json:"supplierId,omitempty"`
 	Quantity       float64    `gorm:"column:quantity;not null" json:"quantity"`
 	Unit           string     `gorm:"column:unit;not null" json:"unit"`
 	UnitPrice      float64    `gorm:"column:unit_price;not null" json:"unitPrice"`
@@ -73,6 +74,7 @@ type InventoryImportDetail struct {
 	// Relationships
 	Import     *InventoryImport `gorm:"foreignKey:ImportID;references:ImportID" json:"import,omitempty"`
 	Ingredient *Ingredient      `gorm:"foreignKey:IngredientID;references:IngredientID" json:"ingredient,omitempty"`
+	Supplier   *Supplier        `gorm:"foreignKey:SupplierID;references:SupplierID" json:"supplier,omitempty"`
 }
 
 func (InventoryImportDetail) TableName() string {

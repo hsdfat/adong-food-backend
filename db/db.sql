@@ -59,6 +59,148 @@ CREATE TABLE IF NOT EXISTS public.ingredient_types
     CONSTRAINT ingredient_types_name_key UNIQUE (ingredient_type_name)
 );
 
+CREATE TABLE IF NOT EXISTS public.inventory_adjustment_details
+(
+    adjustment_detail_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    adjustment_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    quantity_before numeric(15, 4) NOT NULL,
+    quantity_after numeric(15, 4) NOT NULL,
+    quantity_difference numeric(15, 4) NOT NULL,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    unit_cost numeric(15, 2),
+    total_value numeric(15, 2),
+    reason text COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT inventory_adjustment_details_pkey PRIMARY KEY (adjustment_detail_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.inventory_adjustments
+(
+    adjustment_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    adjustment_date date NOT NULL,
+    adjustment_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    reason text COLLATE pg_catalog."default",
+    status character varying(50) COLLATE pg_catalog."default" NOT NULL DEFAULT 'draft'::character varying,
+    total_value numeric(15, 2),
+    approved_by_user_id character varying(50) COLLATE pg_catalog."default",
+    approved_date timestamp without time zone,
+    created_by_user_id character varying(50) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT inventory_adjustments_pkey PRIMARY KEY (adjustment_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.inventory_export_details
+(
+    export_detail_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    export_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    quantity numeric(15, 4) NOT NULL,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    unit_cost numeric(15, 2),
+    total_cost numeric(15, 2),
+    batch_number character varying(100) COLLATE pg_catalog."default",
+    notes text COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT inventory_export_details_pkey PRIMARY KEY (export_detail_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.inventory_exports
+(
+    export_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    export_date date NOT NULL,
+    export_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    destination_kitchen_id character varying(50) COLLATE pg_catalog."default",
+    order_id character varying(50) COLLATE pg_catalog."default",
+    total_amount numeric(15, 2) DEFAULT 0,
+    status character varying(50) COLLATE pg_catalog."default" NOT NULL DEFAULT 'draft'::character varying,
+    notes text COLLATE pg_catalog."default",
+    issued_by_user_id character varying(50) COLLATE pg_catalog."default",
+    approved_by_user_id character varying(50) COLLATE pg_catalog."default",
+    approved_date timestamp without time zone,
+    created_by_user_id character varying(50) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT inventory_exports_pkey PRIMARY KEY (export_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.inventory_import_details
+(
+    import_detail_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    import_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    quantity numeric(15, 4) NOT NULL,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    unit_price numeric(15, 2) NOT NULL,
+    total_price numeric(15, 2) NOT NULL,
+    expiry_date date,
+    batch_number character varying(100) COLLATE pg_catalog."default",
+    notes text COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    supplier_id character varying(50) COLLATE pg_catalog."default",
+    CONSTRAINT inventory_import_details_pkey PRIMARY KEY (import_detail_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.inventory_imports
+(
+    import_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    import_date date NOT NULL,
+    order_id character varying(50) COLLATE pg_catalog."default",
+    supplier_id character varying(50) COLLATE pg_catalog."default",
+    total_amount numeric(15, 2) DEFAULT 0,
+    status character varying(50) COLLATE pg_catalog."default" NOT NULL DEFAULT 'draft'::character varying,
+    notes text COLLATE pg_catalog."default",
+    received_by_user_id character varying(50) COLLATE pg_catalog."default",
+    approved_by_user_id character varying(50) COLLATE pg_catalog."default",
+    approved_date timestamp without time zone,
+    created_by_user_id character varying(50) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT inventory_imports_pkey PRIMARY KEY (import_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.inventory_stocks
+(
+    stock_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    quantity numeric(15, 4) NOT NULL DEFAULT 0,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    min_stock_level numeric(15, 4),
+    max_stock_level numeric(15, 4),
+    last_updated timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT inventory_stocks_pkey PRIMARY KEY (stock_id),
+    CONSTRAINT uq_kitchen_ingredient_stock UNIQUE (kitchen_id, ingredient_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.inventory_transactions
+(
+    transaction_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    kitchen_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    ingredient_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    transaction_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    transaction_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    quantity numeric(15, 4) NOT NULL,
+    unit character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    quantity_before numeric(15, 4) NOT NULL,
+    quantity_after numeric(15, 4) NOT NULL,
+    reference_type character varying(50) COLLATE pg_catalog."default",
+    reference_id character varying(50) COLLATE pg_catalog."default",
+    notes text COLLATE pg_catalog."default",
+    created_by_user_id character varying(50) COLLATE pg_catalog."default",
+    created_date timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT inventory_transactions_pkey PRIMARY KEY (transaction_id)
+);
+
 CREATE TABLE IF NOT EXISTS public.kitchen_favorite_suppliers
 (
     favorite_id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
@@ -280,6 +422,229 @@ ALTER TABLE IF EXISTS public.dish_recipe_standards
     REFERENCES public.master_users (user_id) MATCH SIMPLE
     ON UPDATE CASCADE
     ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_adjustment_details
+    ADD CONSTRAINT fk_adjustment_detail_adjustment FOREIGN KEY (adjustment_id)
+    REFERENCES public.inventory_adjustments (adjustment_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_adjustment_details_adjustment
+    ON public.inventory_adjustment_details(adjustment_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_adjustment_details
+    ADD CONSTRAINT fk_adjustment_detail_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_adjustment_details_ingredient
+    ON public.inventory_adjustment_details(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_adjustments
+    ADD CONSTRAINT fk_adjustment_approved_by FOREIGN KEY (approved_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_adjustments
+    ADD CONSTRAINT fk_adjustment_created_by FOREIGN KEY (created_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_adjustments
+    ADD CONSTRAINT fk_adjustment_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_adjustments_kitchen
+    ON public.inventory_adjustments(kitchen_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_export_details
+    ADD CONSTRAINT fk_export_detail_export FOREIGN KEY (export_id)
+    REFERENCES public.inventory_exports (export_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_export_details_export
+    ON public.inventory_export_details(export_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_export_details
+    ADD CONSTRAINT fk_export_detail_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_export_details_ingredient
+    ON public.inventory_export_details(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_exports
+    ADD CONSTRAINT fk_export_approved_by FOREIGN KEY (approved_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_exports
+    ADD CONSTRAINT fk_export_created_by FOREIGN KEY (created_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_exports
+    ADD CONSTRAINT fk_export_destination FOREIGN KEY (destination_kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+
+
+ALTER TABLE IF EXISTS public.inventory_exports
+    ADD CONSTRAINT fk_export_issued_by FOREIGN KEY (issued_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_exports
+    ADD CONSTRAINT fk_export_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_exports_kitchen
+    ON public.inventory_exports(kitchen_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_exports
+    ADD CONSTRAINT fk_export_order FOREIGN KEY (order_id)
+    REFERENCES public.orders (order_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_exports_order
+    ON public.inventory_exports(order_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_import_details
+    ADD CONSTRAINT fk_import_detail_import FOREIGN KEY (import_id)
+    REFERENCES public.inventory_imports (import_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_import_details_import
+    ON public.inventory_import_details(import_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_import_details
+    ADD CONSTRAINT fk_import_detail_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_import_details_ingredient
+    ON public.inventory_import_details(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_import_details
+    ADD CONSTRAINT fk_import_detail_supplier FOREIGN KEY (supplier_id)
+    REFERENCES public.master_suppliers (supplier_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_import_details_supplier
+    ON public.inventory_import_details(supplier_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_imports
+    ADD CONSTRAINT fk_import_approved_by FOREIGN KEY (approved_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_imports
+    ADD CONSTRAINT fk_import_created_by FOREIGN KEY (created_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_imports
+    ADD CONSTRAINT fk_import_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_imports_kitchen
+    ON public.inventory_imports(kitchen_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_imports
+    ADD CONSTRAINT fk_import_order FOREIGN KEY (order_id)
+    REFERENCES public.orders (order_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_imports_order
+    ON public.inventory_imports(order_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_imports
+    ADD CONSTRAINT fk_import_received_by FOREIGN KEY (received_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_imports
+    ADD CONSTRAINT fk_import_supplier FOREIGN KEY (supplier_id)
+    REFERENCES public.master_suppliers (supplier_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_imports_supplier
+    ON public.inventory_imports(supplier_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_stocks
+    ADD CONSTRAINT fk_stock_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_stocks_ingredient
+    ON public.inventory_stocks(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_stocks
+    ADD CONSTRAINT fk_stock_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_stocks_kitchen
+    ON public.inventory_stocks(kitchen_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_transactions
+    ADD CONSTRAINT fk_transaction_created_by FOREIGN KEY (created_by_user_id)
+    REFERENCES public.master_users (user_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.inventory_transactions
+    ADD CONSTRAINT fk_transaction_ingredient FOREIGN KEY (ingredient_id)
+    REFERENCES public.master_ingredients (ingredient_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_transactions_ingredient
+    ON public.inventory_transactions(ingredient_id);
+
+
+ALTER TABLE IF EXISTS public.inventory_transactions
+    ADD CONSTRAINT fk_transaction_kitchen FOREIGN KEY (kitchen_id)
+    REFERENCES public.master_kitchens (kitchen_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_transactions_kitchen
+    ON public.inventory_transactions(kitchen_id);
 
 
 ALTER TABLE IF EXISTS public.kitchen_favorite_suppliers
