@@ -1,6 +1,7 @@
 package server
 
 import (
+	"adong-be/auth"
 	"adong-be/handler"
 	"adong-be/logger"
 	"adong-be/store"
@@ -12,6 +13,18 @@ import (
 
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
+
+	// CORS middleware - must be registered before routes
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
 
 	// Create user provider
 
@@ -43,8 +56,8 @@ func SetupRouter() *gin.Engine {
 		UserProvider: store.DB,
 		UserCreator:  store.DB, // Enable user creation for registration
 
-		// Authentication function
-		Authenticator: ginauth.CreateEnhancedAuthenticator(store.DB),
+		// Authentication function - supports both hashed and plain text passwords
+		Authenticator: auth.CreateDualPasswordAuthenticator(store.DB),
 
 		// Role-based authorization (example: only admin and user roles allowed)
 		RoleAuthorizator: ginauth.CreateRoleAuthorizator("Admin", "user", "moderator"),
@@ -72,17 +85,6 @@ func SetupRouter() *gin.Engine {
 		authenticated.POST("/logout-all", authMiddleware.LogoutAllHandler)
 		authenticated.GET("/sessions", authMiddleware.GetUserSessionsHandler)
 	}
-	// CORS middleware
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
 
 	// Request logging middleware with user identity
 	r.Use(func(c *gin.Context) {

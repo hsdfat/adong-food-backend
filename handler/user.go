@@ -94,8 +94,12 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	// Hash password before storing
+	// Store both plain text and hashed password
 	if item.Password != "" {
+		// Save plain password
+		item.PlainPassword = item.Password
+
+		// Hash password before storing
 		hashedPassword, err := store.HashPassword(item.Password)
 		if err != nil {
 			logger.Log.Error("CreateUser hash password error", "error", err)
@@ -111,8 +115,9 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	// Don't return password in response
+	// Don't return passwords in response
 	item.Password = ""
+	item.PlainPassword = ""
 	c.JSON(http.StatusCreated, item)
 }
 
@@ -127,8 +132,9 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// Store old password
+	// Store old passwords
 	oldPassword := item.Password
+	oldPlainPassword := item.PlainPassword
 
 	if err := c.ShouldBindJSON(&item); err != nil {
 		logger.Log.Error("UpdateUser bind error", "error", err)
@@ -138,6 +144,10 @@ func UpdateUser(c *gin.Context) {
 
 	// Hash new password if provided, otherwise keep old password
 	if item.Password != "" && item.Password != oldPassword {
+		// Save plain password
+		item.PlainPassword = item.Password
+
+		// Hash password
 		hashedPassword, err := store.HashPassword(item.Password)
 		if err != nil {
 			logger.Log.Error("UpdateUser hash password error", "error", err)
@@ -146,7 +156,9 @@ func UpdateUser(c *gin.Context) {
 		}
 		item.Password = hashedPassword
 	} else {
+		// Keep old passwords
 		item.Password = oldPassword
+		item.PlainPassword = oldPlainPassword
 	}
 
 	if err := store.DB.GormClient.Save(&item).Error; err != nil {
@@ -155,8 +167,9 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// Don't return password in response
+	// Don't return passwords in response
 	item.Password = ""
+	item.PlainPassword = ""
 	c.JSON(http.StatusOK, item)
 }
 
