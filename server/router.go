@@ -11,6 +11,23 @@ import (
 	"github.com/hsdfat/go-auth-middleware/ginauth"
 )
 
+// AdminOnlyMiddleware checks if the user has Admin role
+func AdminOnlyMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("user_role")
+		if !exists || role != "Admin" {
+			c.JSON(403, gin.H{
+				"code":    403,
+				"success": false,
+				"message": "Admin access required",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
 
@@ -138,11 +155,16 @@ func SetupRouter() *gin.Engine {
 		api.PUT("/kitchens/:id", handler.UpdateKitchen)
 		api.DELETE("/kitchens/:id", handler.DeleteKitchen)
 
-		api.GET("/users", handler.GetUsers)
-		api.GET("/users/:id", handler.GetUser)
-		api.POST("/users", handler.CreateUser)
-		api.PUT("/users/:id", handler.UpdateUser)
-		api.DELETE("/users/:id", handler.DeleteUser)
+		// User management routes - Admin only
+		users := api.Group("/users")
+		users.Use(AdminOnlyMiddleware())
+		{
+			users.GET("", handler.GetUsers)
+			users.GET("/:id", handler.GetUser)
+			users.POST("", handler.CreateUser)
+			users.PUT("/:id", handler.UpdateUser)
+			users.DELETE("/:id", handler.DeleteUser)
+		}
 
 		api.GET("/dishes", handler.GetDishes)
 		api.GET("/dishes/:id", handler.GetDish)
